@@ -1,0 +1,5 @@
+data/
+workspace/
+*.db
+.env
+.DS_Store

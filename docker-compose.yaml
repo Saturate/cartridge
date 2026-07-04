@@ -1,0 +1,25 @@
+# Cartridge - Standalone
+services:
+  cartridge:
+    build: .
+    container_name: cartridge
+    restart: unless-stopped
+    shm_size: 2g
+    cap_add: [SYS_ADMIN, SYS_PTRACE]
+    security_opt: [seccomp=unconfined]
+    ports:
+      - "127.0.0.1:7681:7681"     # ttyd web terminal
+      # - "127.0.0.1:6080:6080"   # noVNC (optional)
+      # - "127.0.0.1:2222:22"     # SSH (optional)
+    volumes:
+      - ./data/config:/home/dev/.claude
+      - ./workspace:/workspace
+      # - ./skills:/skills:ro     # custom skills (optional)
+    environment:
+      - TZ=Europe/Copenhagen
+      - PUID=1000
+      - PGID=1000
+      # - HUSK_ENDPOINT=http://husk:3000
+      # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # - SKILLS_INIT=true
+      # - PK_MODE=true

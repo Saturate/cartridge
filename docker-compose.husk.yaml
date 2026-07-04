@@ -1,0 +1,50 @@
+# Cartridge + HUSK + Eye
+services:
+  cartridge:
+    build: .
+    container_name: cartridge
+    restart: unless-stopped
+    shm_size: 2g
+    cap_add: [SYS_ADMIN, SYS_PTRACE]
+    security_opt: [seccomp=unconfined]
+    ports:
+      - "127.0.0.1:7681:7681"       # ttyd web terminal
+      - "127.0.0.1:6080:6080"       # noVNC
+    volumes:
+      - ./data/config:/home/dev/.claude
+      - ./workspace:/workspace
+      - ./skills:/skills:ro
+    environment:
+      - TZ=Europe/Copenhagen
+      - PUID=1000
+      - PGID=1000
+      - HUSK_ENDPOINT=http://husk:3000
+      - HUSK_API_KEY=${HUSK_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - SKILLS_INIT=true
+      - NOVNC_ENABLE=true
+    depends_on: [husk]
+
+  eye:
+    image: ghcr.io/saturate/eye:latest
+    container_name: eye
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4400:4400"       # Eye API
+      - "127.0.0.1:4401:4401"       # Eye Web UI
+    volumes:
+      - ./data/eye:/data
+    environment:
+      - EYE_DB_PATH=/data/eye.db
+
+  husk:
+    image: ghcr.io/saturate/husk:latest
+    container_name: husk
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"       # HUSK dashboard + OTLP receiver
+    volumes:
+      - ./data/husk:/data
+    environment:
+      - DATABASE_URL=file:/data/husk.db
+      - HUSK_API_KEY=${HUSK_API_KEY}
