@@ -1,0 +1,15 @@
+#!/command/with-contenv bash
+
+[ "${NOVNC_ENABLE:-}" = "true" ] || exec sleep infinity
+
+# Wait for Xvfb socket
+while [ ! -e /tmp/.X11-unix/X99 ]; do sleep 0.5; done
+
+# x11vnc bridges Xvfb display to VNC protocol
+/command/s6-setuidgid dev \
+  x11vnc -display :99 -forever -shared -rfbport 5900 -nopw -q &
+
+sleep 2
+
+exec /command/s6-setuidgid dev \
+  /opt/novnc/utils/novnc_proxy --vnc localhost:5900 --listen 6080

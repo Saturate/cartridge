@@ -1,0 +1,9 @@
+#!/command/with-contenv bash
+
+[ "${SSH_ENABLE:-}" = "true" ] || exec sleep infinity
+
+# Generate host keys if missing
+[ -f /etc/ssh/ssh_host_rsa_key ] || ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N ""
+[ -f /etc/ssh/ssh_host_ed25519_key ] || ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N ""
+
+exec /usr/sbin/sshd -D -e

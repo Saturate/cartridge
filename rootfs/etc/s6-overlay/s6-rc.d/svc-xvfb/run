@@ -1,0 +1,7 @@
+#!/command/with-contenv bash
+
+mkdir -p /tmp/.X11-unix
+chmod 1777 /tmp/.X11-unix
+
+exec /command/s6-setuidgid dev \
+  Xvfb :99 -screen 0 1920x1080x24 -nolisten tcp

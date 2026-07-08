@@ -1,0 +1,31 @@
+#!/command/with-contenv bash
+
+# Wait for Xvfb socket
+while [ ! -e /tmp/.X11-unix/X99 ]; do sleep 0.5; done
+
+# Ensure writable dirs exist for dev user
+mkdir -p /home/dev/.cache/fontconfig /home/dev/.local/share/chromium/Crashpad
+chown -R dev:dev /home/dev/.cache /home/dev/.local/share/chromium
+
+export DBUS_SESSION_BUS_ADDRESS=/dev/null
+
+# Prefer Playwright's container-friendly Chromium; fall back to system
+CHROME_BIN="${CHROME_PLAYWRIGHT_PATH:-/usr/local/bin/chrome-playwright}"
+[ -x "$CHROME_BIN" ] || CHROME_BIN=/usr/bin/chromium
+
+exec /command/s6-setuidgid dev \
+  "$CHROME_BIN" \
+    --no-sandbox \
+    --disable-gpu \
+    --disable-dev-shm-usage \
+    --remote-debugging-port=9222 \
+    --remote-debugging-address=0.0.0.0 \
+    --headless=new \
+    --disable-background-networking \
+    --disable-crash-reporter \
+    --disable-breakpad \
+    --no-first-run \
+    --disable-default-apps \
+    --disable-extensions \
+    --disable-sync \
+    --window-size=1920,1080

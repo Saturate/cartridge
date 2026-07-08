@@ -1,0 +1,12 @@
+#!/command/with-contenv bash
+
+STATE_DIR="/home/dev/.claude/state"
+mkdir -p "$STATE_DIR"
+chown dev:dev "$STATE_DIR"
+
+while true; do
+  for f in .zsh_history .gitconfig .tmux.conf; do
+    [ -f "/home/dev/$f" ] && cp "/home/dev/$f" "$STATE_DIR/$f" 2>/dev/null || true
+  done
+  sleep 60
+done
