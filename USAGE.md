@@ -77,6 +77,30 @@ shoutrrr send -u "$SHOUTRRR_URL" "Build complete"
 
 Supported: Slack, Discord, Teams, email (SMTP), Gotify, Pushover, webhooks.
 
+### Workspace
+
+The workspace (`/workspace`) is auto-configured on boot:
+
+**Auto-clone a repo:**
+```yaml
+environment:
+  - GIT_REPO_URL=https://github.com/org/repo
+  - GIT_BRANCH=main  # optional, defaults to repo default
+```
+
+**Git worktree (work on a branch without affecting the main checkout):**
+```yaml
+environment:
+  - GIT_WORKTREE_REPO=https://github.com/org/repo
+  - GIT_WORKTREE_BRANCH=feature-branch
+```
+
+**No config:** if the workspace is empty and no repo is configured,
+bootstrap runs `git init` so agents have git available from the start.
+
+If the workspace already contains files or a `.git` directory, bootstrap
+leaves it alone.
+
 ## Environment Variables Reference
 
 ### Provider Auth
@@ -90,6 +114,15 @@ Supported: Slack, Discord, Teams, email (SMTP), Gotify, Pushover, webhooks.
 | `OLLAMA_MODELS` | Pi (via bootstrap) | Comma-separated model list (auto-discovered if empty) |
 | `GH_TOKEN` | gh CLI | GitHub personal access token |
 | `GITHUB_TOKEN` | gh CLI | Alternative GitHub token variable |
+
+### Workspace
+
+| Variable | Description |
+|----------|-------------|
+| `GIT_REPO_URL` | Clone this repo into /workspace on first boot |
+| `GIT_BRANCH` | Branch to clone (default: repo default) |
+| `GIT_WORKTREE_REPO` | Create a worktree from this repo |
+| `GIT_WORKTREE_BRANCH` | Branch for the worktree (default: `main`) |
 
 ### Container Config
 

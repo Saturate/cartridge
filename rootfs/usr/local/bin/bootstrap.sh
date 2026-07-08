@@ -65,6 +65,42 @@ fi
 # ── State directory ──────────────────────────────────────────────
 mkdir -p "$HOME_DIR/.claude/state"
 
+# ── Workspace git setup ──────────────────────────────────────────
+WORKSPACE="/workspace"
+if [ -d "$WORKSPACE" ]; then
+  ws_empty() { [ ! -d "$WORKSPACE/.git" ] && [ -z "$(ls -A "$WORKSPACE" 2>/dev/null)" ]; }
+
+  if [ -n "${GIT_WORKTREE_REPO:-}" ] && ws_empty; then
+    BRANCH="${GIT_WORKTREE_BRANCH:-main}"
+    if git clone --branch "$BRANCH" "$GIT_WORKTREE_REPO" "$WORKSPACE" 2>&1; then
+      log "workspace: cloned $GIT_WORKTREE_REPO ($BRANCH) for worktree"
+    else
+      log "workspace: failed to clone $GIT_WORKTREE_REPO"
+    fi
+
+  elif [ -n "${GIT_REPO_URL:-}" ] && ws_empty; then
+    BRANCH="${GIT_BRANCH:-}"
+    if git clone ${BRANCH:+--branch "$BRANCH"} "$GIT_REPO_URL" "$WORKSPACE" 2>&1; then
+      log "workspace: cloned $GIT_REPO_URL${BRANCH:+ ($BRANCH)}"
+    else
+      log "workspace: failed to clone $GIT_REPO_URL"
+    fi
+
+  elif ws_empty; then
+    git init -q "$WORKSPACE"
+    log "workspace: initialized empty git repo"
+
+  elif [ -d "$WORKSPACE/.git" ]; then
+    log "workspace: existing git repo"
+  fi
+
+  # Fix ownership and safe.directory for cloned/init repos
+  if [ -d "$WORKSPACE/.git" ]; then
+    chown -R dev:dev "$WORKSPACE"
+    su -s /bin/sh dev -c "git config --global --add safe.directory $WORKSPACE" 2>/dev/null
+  fi
+fi
+
 # ── Provider auto-wiring ─────────────────────────────────────────
 # Claude Code: ANTHROPIC_API_KEY is picked up automatically.
 # For subscription auth, the user runs `claude auth login` or

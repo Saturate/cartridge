@@ -28,6 +28,11 @@ services:
       # - GH_TOKEN=${GH_TOKEN}
       # --- Notifications ---
       # - SHOUTRRR_URL=slack://token-a/token-b/token-c
+      # --- Workspace ---
+      # - GIT_REPO_URL=https://github.com/org/repo
+      # - GIT_BRANCH=main
+      # - GIT_WORKTREE_REPO=/path/to/parent/repo
+      # - GIT_WORKTREE_BRANCH=feature-branch
       # --- Integrations ---
       # - HUSK_ENDPOINT=http://husk:3000
       # - SKILLS_INIT=true
