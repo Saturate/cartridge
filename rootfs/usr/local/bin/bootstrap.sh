@@ -8,7 +8,9 @@ if [ ! -f "$HOME_DIR/.zshrc" ]; then
   cat > "$HOME_DIR/.zshrc" << 'EOF'
 export LANG=en_US.UTF-8
 export EDITOR=vim
+export NVM_DIR=/usr/local/nvm
 export PATH="$HOME/.local/bin:$PATH"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 
 PROMPT='%F{blue}cartridge%f %~ %# '
 

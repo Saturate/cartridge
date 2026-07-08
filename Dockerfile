@@ -7,7 +7,7 @@ FROM debian:bookworm-slim
 LABEL org.opencontainers.image.source=https://github.com/Saturate/cartridge
 
 ARG S6_OVERLAY_VERSION=3.2.3.0
-ARG NODE_MAJOR=22
+ARG NODE_DEFAULT=24
 ARG TTYD_VERSION=1.7.7
 ARG TARGETARCH
 
@@ -50,18 +50,49 @@ RUN case "${TARGETARCH}" in \
     && curl -fsSL "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-${S6_ARCH}.tar.xz" \
        | tar -C / -Jxpf -
 
-# ── Node.js 22 ───────────────────────────────────────────────────
-RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash - \
-    && apt-get install -y --no-install-recommends nodejs \
+# ── nvm + Node.js ────────────────────────────────────────────────
+ENV NVM_DIR=/usr/local/nvm
+RUN mkdir -p "$NVM_DIR" \
+    && curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash \
+    && . "$NVM_DIR/nvm.sh" \
+    && nvm install ${NODE_DEFAULT} \
+    && nvm install 22 \
+    && nvm alias default ${NODE_DEFAULT} \
+    && nvm use default \
     && npm install -g pnpm \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    && ln -sf "$NVM_DIR/versions/node/$(nvm version default)/bin/node" /usr/local/bin/node \
+    && ln -sf "$NVM_DIR/versions/node/$(nvm version default)/bin/npm" /usr/local/bin/npm \
+    && ln -sf "$NVM_DIR/versions/node/$(nvm version default)/bin/npx" /usr/local/bin/npx \
+    && ln -sf "$NVM_DIR/versions/node/$(nvm version default)/bin/pnpm" /usr/local/bin/pnpm
 
 # ── Core CLI tools ───────────────────────────────────────────────
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ripgrep fd-find bat fzf \
+      imagemagick ffmpeg pandoc \
     && ln -sf /usr/bin/batcat /usr/local/bin/bat \
     && ln -sf /usr/bin/fdfind /usr/local/bin/fd \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# ── GitHub CLI ───────────────────────────────────────────────────
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+      -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+      > /etc/apt/sources.list.d/github-cli.list \
+    && apt-get update && apt-get install -y --no-install-recommends gh \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# ── git-delta, scc, shoutrrr ─────────────────────────────────────
+RUN case "${TARGETARCH}" in \
+      amd64) DELTA_ARCH="x86_64-unknown-linux-musl"; SCC_ARCH="x86_64"; SHOUT_ARCH="amd64" ;; \
+      arm64) DELTA_ARCH="aarch64-unknown-linux-gnu"; SCC_ARCH="arm64"; SHOUT_ARCH="arm64" ;; \
+    esac \
+    && curl -fsSL "https://github.com/dandavison/delta/releases/download/0.18.2/delta-0.18.2-${DELTA_ARCH}.tar.gz" \
+      | tar -xz --strip-components=1 -C /usr/local/bin/ "delta-0.18.2-${DELTA_ARCH}/delta" \
+    && curl -fsSL "https://github.com/boyter/scc/releases/download/v3.7.0/scc_Linux_${SCC_ARCH}.tar.gz" \
+      | tar -xz -C /usr/local/bin/ scc \
+    && curl -fsSL "https://github.com/containrrr/shoutrrr/releases/download/v0.8.0/shoutrrr_linux_${SHOUT_ARCH}.tar.gz" \
+      | tar -xz -C /usr/local/bin/ shoutrrr \
+    && chmod +x /usr/local/bin/delta /usr/local/bin/scc /usr/local/bin/shoutrrr
 
 # ── Bun ──────────────────────────────────────────────────────────
 RUN curl -fsSL https://bun.sh/install | BUN_INSTALL=/usr/local bash
@@ -97,13 +128,15 @@ RUN mkdir -p /run/sshd \
     && sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config
 
 # ── AI CLIs + global tooling ─────────────────────────────────────
-RUN npm install -g \
-      @anthropic-ai/claude-code \
-      --ignore-scripts @earendil-works/pi-coding-agent \
-      typescript tsx
+RUN . "$NVM_DIR/nvm.sh" \
+    && npm install -g \
+       @anthropic-ai/claude-code \
+       --ignore-scripts @earendil-works/pi-coding-agent \
+       typescript tsx \
+    && cd "$(npm root -g)/@anthropic-ai/claude-code" && node install.cjs
 
 # ── Playwright Chromium (container-friendly build) ───────────────
-RUN npx -y playwright install chromium \
+RUN . "$NVM_DIR/nvm.sh" && npx -y playwright install chromium \
     && npx -y playwright install-deps chromium \
     && mv /root/.cache/ms-playwright /opt/playwright \
     && ln -sf "$(find /opt/playwright -name chrome -path '*/chrome-linux/*' -type f | head -1)" \
