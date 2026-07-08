@@ -1,0 +1,101 @@
+#!/bin/bash
+# cartridge-status - show what's configured and running
+
+export NVM_DIR=/usr/local/nvm
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" 2>/dev/null
+
+G='\033[32m' R='\033[31m' Y='\033[33m' B='\033[34m' N='\033[0m'
+ok="${G}ok${N}" no="${R}--${N}" warn="${Y}!!${N}"
+
+echo -e "${B}cartridge${N} status"
+echo ""
+
+# ── Services ─────────────────────────────────────────────────────
+echo "services:"
+for svc in xvfb ttyd chrome state-sync novnc sshd; do
+  pid=$(pgrep -f "svc-$svc" -o 2>/dev/null)
+  if [ -n "$pid" ]; then
+    # Check if the service is actually running vs sleeping
+    if pgrep -f "sleep infinity" -P "$pid" &>/dev/null 2>&1; then
+      echo -e "  $svc: ${Y}disabled${N}"
+    else
+      echo -e "  $svc: ${G}running${N}"
+    fi
+  else
+    echo -e "  $svc: ${R}stopped${N}"
+  fi
+done
+
+# Check CDP
+cdp=$(curl -sf http://localhost:9222/json/version 2>/dev/null | python3 -c "import sys,json;print(json.load(sys.stdin)['Browser'])" 2>/dev/null)
+[ -n "$cdp" ] && echo -e "  cdp:  ${G}${cdp}${N}" || echo -e "  cdp:  ${R}not responding${N}"
+
+echo ""
+
+# ── Providers ────────────────────────────────────────────────────
+echo "providers:"
+
+# Claude Code
+if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
+  echo -e "  claude: ${ok} (API key)"
+elif command -v claude &>/dev/null && claude auth status 2>&1 | grep -qi "logged in\|authenticated\|active"; then
+  echo -e "  claude: ${ok} (subscription)"
+else
+  echo -e "  claude: ${no} (set ANTHROPIC_API_KEY, run 'claude auth login', or run 'claude setup-token')"
+fi
+
+# Pi
+if [ -f "$HOME/.pi/agent/models.json" ]; then
+  providers=$(python3 -c "
+import json
+with open('$HOME/.pi/agent/models.json') as f:
+    d = json.load(f)
+    print(', '.join(d.get('providers',{}).keys()))
+" 2>/dev/null)
+  echo -e "  pi:     ${ok} (${providers:-custom})"
+elif [ -n "${ANTHROPIC_API_KEY:-}${OPENAI_API_KEY:-}${GEMINI_API_KEY:-}" ]; then
+  echo -e "  pi:     ${ok} (env key)"
+else
+  echo -e "  pi:     ${no} (set OLLAMA_HOST, or provider API key)"
+fi
+
+# Ollama
+if [ -n "${OLLAMA_HOST:-}" ]; then
+  model_count=$(curl -sf "${OLLAMA_HOST}/api/tags" 2>/dev/null \
+    | python3 -c "import sys,json;print(len(json.load(sys.stdin).get('models',[])))" 2>/dev/null)
+  if [ -n "$model_count" ] && [ "$model_count" -gt 0 ]; then
+    echo -e "  ollama: ${ok} (${OLLAMA_HOST}, ${model_count} models)"
+  else
+    echo -e "  ollama: ${warn} (${OLLAMA_HOST} set but not responding)"
+  fi
+fi
+
+# GitHub
+if [ -n "${GH_TOKEN:-}${GITHUB_TOKEN:-}" ]; then
+  echo -e "  github: ${ok} (token)"
+elif gh auth status &>/dev/null 2>&1; then
+  echo -e "  github: ${ok} (gh auth)"
+else
+  echo -e "  github: ${no} (set GH_TOKEN or run 'gh auth login')"
+fi
+
+echo ""
+
+# ── Notifications ────────────────────────────────────────────────
+echo "notifications:"
+if [ -n "${SHOUTRRR_URL:-}" ]; then
+  # Mask the URL for display
+  proto=$(echo "$SHOUTRRR_URL" | cut -d: -f1)
+  echo -e "  shoutrrr: ${ok} (${proto}://***)"
+else
+  echo -e "  shoutrrr: ${no} (set SHOUTRRR_URL)"
+fi
+
+echo ""
+
+# ── Runtime ──────────────────────────────────────────────────────
+echo "runtime:"
+echo "  node:  $(node --version 2>/dev/null || echo 'not found')"
+echo "  bun:   $(bun --version 2>/dev/null || echo 'not found')"
+echo "  pnpm:  $(pnpm --version 2>/dev/null || echo 'not found')"
+echo "  nvm:   $(nvm --version 2>/dev/null || echo 'not found') ($(nvm ls --no-colors 2>&1 | grep -oE 'v[0-9]+\.[0-9]+' | sort -uV | tr '\n' ' '))"

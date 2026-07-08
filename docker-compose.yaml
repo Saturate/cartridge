@@ -19,7 +19,16 @@ services:
       - TZ=Europe/Copenhagen
       - PUID=1000
       - PGID=1000
-      # - HUSK_ENDPOINT=http://husk:3000
+      # --- Provider auth (uncomment what you need) ---
       # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # - OLLAMA_HOST=http://host.docker.internal:11434
+      # - OLLAMA_MODELS=gemma4:31b-it-bf16,llama3.2
+      # - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # - GEMINI_API_KEY=${GEMINI_API_KEY}
+      # - GH_TOKEN=${GH_TOKEN}
+      # --- Notifications ---
+      # - SHOUTRRR_URL=slack://token-a/token-b/token-c
+      # --- Integrations ---
+      # - HUSK_ENDPOINT=http://husk:3000
       # - SKILLS_INIT=true
       # - PK_MODE=true
