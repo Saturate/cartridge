@@ -1,8 +1,12 @@
 name: Release
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (version bump only, no publish)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -10,7 +14,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: release
 
 jobs:
   release:
@@ -27,62 +31,88 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Create release PR or publish
-        id: changesets
-        uses: changesets/action@v1
-        with:
-          title: "chore: version packages"
-          commit: "chore: version packages"
-          version: npm run version
-          publish: echo "ready"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Check if version was bumped
+      - name: Check for changesets
         id: check
-        if: steps.changesets.outputs.published == 'true'
         run: |
+          if ls .changeset/*.md 1>/dev/null 2>&1; then
+            count=$(ls .changeset/*.md | grep -v README | wc -l)
+            echo "pending=$count" >> "$GITHUB_OUTPUT"
+            echo "$count changeset(s) pending"
+          else
+            echo "pending=0" >> "$GITHUB_OUTPUT"
+            echo "No changesets pending"
+          fi
+
+      - name: Version packages
+        if: steps.check.outputs.pending != '0'
+        run: |
+          npm run version
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
           VERSION=$(node -p "require('./package.json').version")
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Publishing v$VERSION"
+          git commit -m "chore: release v${VERSION}"
+          git tag "v${VERSION}"
+          echo "version=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Push version commit and tag
+        if: env.version && !inputs.dry_run
+        run: |
+          git push origin main --follow-tags
 
       - name: Set up QEMU
-        if: steps.check.outputs.version
+        if: env.version && !inputs.dry_run
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        if: steps.check.outputs.version
+        if: env.version && !inputs.dry_run
         uses: docker/setup-buildx-action@v3
 
       - name: Login to GitHub Container Registry
-        if: steps.check.outputs.version
+        if: env.version && !inputs.dry_run
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push multi-arch image
-        if: steps.check.outputs.version
+      - name: Build and push release image
+        if: env.version && !inputs.dry_run
         uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/saturate/cartridge:${{ steps.check.outputs.version }}
+            ghcr.io/saturate/cartridge:${{ env.version }}
             ghcr.io/saturate/cartridge:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
           labels: |
-            org.opencontainers.image.version=${{ steps.check.outputs.version }}
+            org.opencontainers.image.version=${{ env.version }}
             org.opencontainers.image.source=https://github.com/Saturate/cartridge
 
       - name: Create GitHub Release
-        if: steps.check.outputs.version
+        if: env.version && !inputs.dry_run
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.check.outputs.version }}
-          name: v${{ steps.check.outputs.version }}
+          tag_name: v${{ env.version }}
+          name: v${{ env.version }}
           body_path: CHANGELOG.md
           generate_release_notes: true
+
+      - name: Summary
+        run: |
+          if [ -n "${{ env.version }}" ]; then
+            if [ "${{ inputs.dry_run }}" = "true" ]; then
+              echo "## Dry run: v${{ env.version }}" >> "$GITHUB_STEP_SUMMARY"
+              echo "Version bumped locally but not pushed or published." >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "## Released v${{ env.version }}" >> "$GITHUB_STEP_SUMMARY"
+              echo "- Image: \`ghcr.io/saturate/cartridge:${{ env.version }}\`" >> "$GITHUB_STEP_SUMMARY"
+              echo "- Image: \`ghcr.io/saturate/cartridge:latest\`" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          else
+            echo "## No release" >> "$GITHUB_STEP_SUMMARY"
+            echo "No pending changesets found. Add one with \`npx changeset\`." >> "$GITHUB_STEP_SUMMARY"
+          fi

@@ -3,8 +3,6 @@ name: CI
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [main]
 
 permissions:
   contents: read
@@ -34,13 +32,11 @@ jobs:
             --shm-size 2g --cap-add SYS_ADMIN --security-opt seccomp=unconfined \
             cartridge:test
 
-          # Wait for bootstrap
           for i in $(seq 1 30); do
             docker logs cart-ci 2>&1 | grep -qF "[bootstrap] ready" && break
             sleep 1
           done
 
-          # Verify key services and tools
           docker exec cart-ci bash -c '
             export NVM_DIR=/usr/local/nvm; . "$NVM_DIR/nvm.sh"
             echo "node: $(node --version)"
@@ -52,7 +48,7 @@ jobs:
 
           docker stop cart-ci
 
-  lint-dockerfile:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
