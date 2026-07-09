@@ -73,6 +73,7 @@ if [ -d "$WORKSPACE" ]; then
   if [ -n "${GIT_WORKTREE_REPO:-}" ] && ws_empty; then
     BRANCH="${GIT_WORKTREE_BRANCH:-main}"
     if git clone --branch "$BRANCH" "$GIT_WORKTREE_REPO" "$WORKSPACE" 2>&1; then
+      chown -R dev:dev "$WORKSPACE"
       log "workspace: cloned $GIT_WORKTREE_REPO ($BRANCH) for worktree"
     else
       log "workspace: failed to clone $GIT_WORKTREE_REPO"
@@ -81,6 +82,7 @@ if [ -d "$WORKSPACE" ]; then
   elif [ -n "${GIT_REPO_URL:-}" ] && ws_empty; then
     BRANCH="${GIT_BRANCH:-}"
     if git clone ${BRANCH:+--branch "$BRANCH"} "$GIT_REPO_URL" "$WORKSPACE" 2>&1; then
+      chown -R dev:dev "$WORKSPACE"
       log "workspace: cloned $GIT_REPO_URL${BRANCH:+ ($BRANCH)}"
     else
       log "workspace: failed to clone $GIT_REPO_URL"
@@ -94,11 +96,8 @@ if [ -d "$WORKSPACE" ]; then
     log "workspace: existing git repo"
   fi
 
-  # Fix ownership and safe.directory for cloned/init repos
-  if [ -d "$WORKSPACE/.git" ]; then
-    chown -R dev:dev "$WORKSPACE"
-    su -s /bin/sh dev -c "git config --global --add safe.directory $WORKSPACE" 2>/dev/null
-  fi
+  # safe.directory so dev user can use git regardless of ownership
+  su -s /bin/sh dev -c "git config --global --add safe.directory $WORKSPACE" 2>/dev/null || true
 fi
 
 # ── Provider auto-wiring ─────────────────────────────────────────

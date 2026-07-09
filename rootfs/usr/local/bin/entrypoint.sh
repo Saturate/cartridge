@@ -14,7 +14,7 @@ fi
 
 # Fix ownership
 chown -R dev:dev /home/dev
-chown dev:dev /workspace
+chown dev:dev /workspace 2>/dev/null || true
 
 # State restore from persistent volume
 STATE_DIR="/home/dev/.claude/state"
