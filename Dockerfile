@@ -170,6 +170,7 @@ COPY rootfs/ /
 
 RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/bootstrap.sh \
        /usr/local/bin/cartridge-status /usr/local/bin/cartridge-config \
+       /usr/local/bin/cartridge-notify \
     && find /etc/s6-overlay -name "run" -exec chmod +x {} \;
 
 WORKDIR /workspace

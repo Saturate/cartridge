@@ -1,0 +1,37 @@
+#!/bin/bash
+# cartridge-notify - send to all configured shoutrrr URLs
+# Usage: cartridge-notify "message"
+#        cartridge-notify -t "title" "message"
+#
+# SHOUTRRR_URL supports multiple URLs separated by semicolons:
+#   SHOUTRRR_URL="slack://token/channel;discord://token@id;generic+https://webhook.site/xxx"
+
+set -euo pipefail
+
+if [ -z "${SHOUTRRR_URL:-}" ]; then
+  echo "SHOUTRRR_URL not set" >&2
+  exit 1
+fi
+
+TITLE=""
+if [ "${1:-}" = "-t" ]; then
+  TITLE="$2"
+  shift 2
+fi
+
+MSG="${1:?Usage: cartridge-notify [-t title] message}"
+
+IFS=';' read -ra URLS <<< "$SHOUTRRR_URL"
+failures=0
+
+for url in "${URLS[@]}"; do
+  url=$(echo "$url" | xargs)
+  [ -z "$url" ] && continue
+  if [ -n "$TITLE" ]; then
+    shoutrrr send -u "$url" -t "$TITLE" "$MSG" 2>&1 || failures=$((failures + 1))
+  else
+    shoutrrr send -u "$url" "$MSG" 2>&1 || failures=$((failures + 1))
+  fi
+done
+
+exit $failures

@@ -59,6 +59,7 @@ Everything installed in the Cartridge image.
 | Tool | Command | What it does |
 |------|---------|-------------|
 | shoutrrr | `shoutrrr send -u URL "msg"` | Slack, Discord, Teams, email, webhooks |
+| cartridge-notify | `cartridge-notify "msg"` | Sends to all URLs in `SHOUTRRR_URL` (semicolon-separated) |
 
 ## Browser
 

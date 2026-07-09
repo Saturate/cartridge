@@ -86,9 +86,9 @@ If no workspace config is set and `/workspace` is empty, bootstrap runs `git ini
 
 | Env var | TOML key | Example | Description |
 |---------|----------|---------|-------------|
-| `SHOUTRRR_URL` | `notifications.shoutrrr_url` | `slack://token/channel` | Notification URL. Supports Slack, Discord, Teams, email, webhooks |
+| `SHOUTRRR_URL` | `notifications.shoutrrr_url` | `slack://a/b/c;discord://t@id` | Notification URLs, semicolon-separated. Supports Slack, Discord, Teams, email, webhooks |
 
-Usage: `shoutrrr send -u "$SHOUTRRR_URL" "message"`
+Usage: `cartridge-notify "build complete"` or `cartridge-notify -t "Title" "message"`. Sends to all URLs in `SHOUTRRR_URL`. For a single URL, `shoutrrr send -u "$url" "msg"` also works.
 
 ### Integrations
 
