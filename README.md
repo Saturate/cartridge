@@ -110,6 +110,16 @@ helm install dev helm/cartridge/ \
 - **[cartridge.example.toml](cartridge.example.toml)** - All config options
 - **[test/integration.sh](test/integration.sh)** - Integration test suite (62 assertions)
 
+### Examples
+
+- **[Claude Code](docs/examples/claude-code.md)** - API key, subscription, headless, skills
+- **[Ollama](docs/examples/ollama.md)** - Local/remote models, auto-discovery, compose stack
+- **[OpenAI](docs/examples/openai.md)** - Codex CLI, Pi with GPT models
+- **[Google Gemini](docs/examples/google.md)** - Gemini CLI, Gemma via Ollama
+- **[Multi-Provider](docs/examples/multi-provider.md)** - All providers at once
+- **[Kubernetes](docs/examples/kubernetes.md)** - Helm chart, production values, subscription auth
+- **[Tunnels](docs/examples/tunnels.md)** - Tailscale, Cloudflare, SSH
+
 ## License
 
 MIT
