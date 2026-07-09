@@ -62,6 +62,9 @@ if [ ! -f "$HOME_DIR/.gitconfig" ]; then
 EOF
 fi
 
+# ── Load config file (env vars take precedence) ─────────────────
+eval "$(cartridge-config)" || true
+
 # ── State directory ──────────────────────────────────────────────
 mkdir -p "$HOME_DIR/.claude/state"
 

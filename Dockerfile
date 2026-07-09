@@ -167,7 +167,7 @@ RUN pip3 install --break-system-packages httpx
 COPY rootfs/ /
 
 RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/bootstrap.sh \
-       /usr/local/bin/cartridge-status \
+       /usr/local/bin/cartridge-status /usr/local/bin/cartridge-config \
     && find /etc/s6-overlay -name "run" -exec chmod +x {} \;
 
 WORKDIR /workspace

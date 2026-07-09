@@ -9,6 +9,38 @@ docker compose up -d
 
 Run `cartridge-status` inside the container to see what's configured.
 
+## Configuration
+
+Two ways to configure, can be combined:
+
+1. **Env vars** in `docker-compose.yaml` or `docker run -e` (CI, compose)
+2. **TOML file** mounted at `/etc/cartridge/config.toml` or placed in `/workspace/cartridge.toml` (humans, version control)
+
+Env vars always override TOML values. See `cartridge.example.toml` for the
+full format.
+
+```bash
+# Mount a config file
+docker run -v ./cartridge.toml:/etc/cartridge/config.toml:ro ...
+```
+
+```toml
+# cartridge.toml
+[providers]
+ollama_host = "http://10.106.20.134:11434"
+ollama_models = ["gemma4:31b-it-bf16", "llama3.2"]
+
+[github]
+token = "ghp_..."
+
+[tunnels]
+tailscale_authkey = "tskey-auth-..."
+tailscale_hostname = "cartridge-dev"
+
+[notifications]
+shoutrrr_url = "slack://token-a/token-b/token-c"
+```
+
 ## Authentication
 
 Cartridge supports multiple auth paths. Set env vars in `docker-compose.yaml`

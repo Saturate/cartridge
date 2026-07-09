@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+"""Load cartridge.toml and emit env vars for shell eval.
+
+Reads from (first found):
+  1. /etc/cartridge/config.toml
+  2. /workspace/cartridge.toml
+
+Outputs KEY=VALUE lines. Only emits keys not already set in the
+environment, so env vars always take precedence.
+
+Usage in bootstrap.sh:
+  eval "$(cartridge-config)"
+"""
+
+import os
+import sys
+
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib  # type: ignore
+
+CONFIG_PATHS = [
+    "/etc/cartridge/config.toml",
+    "/workspace/cartridge.toml",
+]
+
+TOML_TO_ENV = {
+    # [providers]
+    "providers.anthropic_api_key":  "ANTHROPIC_API_KEY",
+    "providers.openai_api_key":     "OPENAI_API_KEY",
+    "providers.gemini_api_key":     "GEMINI_API_KEY",
+    "providers.ollama_host":        "OLLAMA_HOST",
+    "providers.ollama_models":      "OLLAMA_MODELS",
+    # [github]
+    "github.token":                 "GH_TOKEN",
+    # [workspace]
+    "workspace.repo_url":           "GIT_REPO_URL",
+    "workspace.branch":             "GIT_BRANCH",
+    "workspace.worktree_repo":      "GIT_WORKTREE_REPO",
+    "workspace.worktree_branch":    "GIT_WORKTREE_BRANCH",
+    # [ssh]
+    "ssh.enable":                   "SSH_ENABLE",
+    "ssh.authorized_keys":          "SSH_AUTHORIZED_KEYS",
+    # [tunnels]
+    "tunnels.tailscale_authkey":    "TAILSCALE_AUTHKEY",
+    "tunnels.tailscale_hostname":   "TAILSCALE_HOSTNAME",
+    "tunnels.tailscale_tags":       "TAILSCALE_TAGS",
+    "tunnels.cf_tunnel_token":      "CF_TUNNEL_TOKEN",
+    # [notifications]
+    "notifications.shoutrrr_url":   "SHOUTRRR_URL",
+    # [integrations]
+    "integrations.husk_endpoint":   "HUSK_ENDPOINT",
+    "integrations.husk_api_key":    "HUSK_API_KEY",
+    "integrations.skills_init":     "SKILLS_INIT",
+    "integrations.pk_mode":         "PK_MODE",
+    # [container]
+    "container.tz":                 "TZ",
+    "container.novnc_enable":       "NOVNC_ENABLE",
+}
+
+
+def flatten(data: dict, prefix: str = "") -> dict:
+    out = {}
+    for k, v in data.items():
+        key = f"{prefix}.{k}" if prefix else k
+        if isinstance(v, dict):
+            out.update(flatten(v, key))
+        else:
+            out[key] = v
+    return out
+
+
+def to_str(value) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, list):
+        return ",".join(str(v) for v in value)
+    return str(value)
+
+
+def shell_escape(s: str) -> str:
+    return "'" + s.replace("'", "'\\''") + "'"
+
+
+def main():
+    config_path = None
+    for p in CONFIG_PATHS:
+        if os.path.isfile(p):
+            config_path = p
+            break
+
+    if not config_path:
+        return
+
+    with open(config_path, "rb") as f:
+        data = tomllib.load(f)
+
+    flat = flatten(data)
+    emitted = 0
+
+    for toml_key, env_key in TOML_TO_ENV.items():
+        if toml_key in flat and not os.environ.get(env_key):
+            val = to_str(flat[toml_key])
+            print(f"export {env_key}={shell_escape(val)}")
+            emitted += 1
+
+    if emitted > 0:
+        print(f"# cartridge-config: loaded {emitted} values from {config_path}",
+              file=sys.stderr)
+
+
+if __name__ == "__main__":
+    main()

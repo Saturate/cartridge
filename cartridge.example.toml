@@ -1,0 +1,45 @@
+# Cartridge configuration
+# Mount at /etc/cartridge/config.toml or place in the workspace root.
+# Env vars override values from this file.
+
+[providers]
+# anthropic_api_key = "sk-ant-..."
+# openai_api_key = "sk-..."
+# gemini_api_key = "..."
+# ollama_host = "http://10.106.20.134:11434"
+# ollama_models = ["gemma4:31b-it-bf16", "llama3.2"]
+
+[github]
+# token = "ghp_..."
+
+[workspace]
+# repo_url = "https://github.com/org/repo"
+# branch = "main"
+# worktree_repo = "https://github.com/org/repo"
+# worktree_branch = "feature-branch"
+
+[ssh]
+# enable = true
+# authorized_keys = """
+# ssh-ed25519 AAAA... user@host
+# ssh-rsa AAAA... other@host
+# """
+
+[tunnels]
+# tailscale_authkey = "tskey-auth-..."
+# tailscale_hostname = "cartridge-dev"
+# tailscale_tags = "tag:dev"
+# cf_tunnel_token = "eyJ..."
+
+[notifications]
+# shoutrrr_url = "slack://token-a/token-b/token-c"
+
+[integrations]
+# husk_endpoint = "http://husk:3000"
+# husk_api_key = "..."
+# skills_init = true
+# pk_mode = true
+
+[container]
+# tz = "Europe/Copenhagen"
+# novnc_enable = true
