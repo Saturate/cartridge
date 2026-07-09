@@ -2,6 +2,34 @@
 # Build: docker build -t cartridge .
 # Run:   docker compose up -d
 
+# ── Build stage: Rust API ────────────────────────────────────────
+# For local builds: compiles from source (single-platform).
+# For CI: place pre-built binaries at api/bin/linux-<arch>/cartridge-api
+#         and set CARTRIDGE_API_PREBUILT=1 to skip compilation.
+FROM rust:1-bookworm AS api-builder
+
+ARG TARGETARCH
+ARG CARTRIDGE_API_PREBUILT
+
+COPY api/ /build/
+WORKDIR /build
+
+RUN if [ "$CARTRIDGE_API_PREBUILT" = "1" ] && [ -f "bin/linux-${TARGETARCH}/cartridge-api" ]; then \
+      echo "using pre-built binary for ${TARGETARCH}"; \
+      cp "bin/linux-${TARGETARCH}/cartridge-api" /build/cartridge-api; \
+    else \
+      apt-get update && apt-get install -y --no-install-recommends musl-tools \
+      && rm -rf /var/lib/apt/lists/* \
+      && case "${TARGETARCH}" in \
+           amd64) RUST_TARGET="x86_64-unknown-linux-musl" ;; \
+           arm64) RUST_TARGET="aarch64-unknown-linux-musl" ;; \
+         esac \
+      && rustup target add "$RUST_TARGET" \
+      && cargo build --release --target "$RUST_TARGET" \
+      && cp "target/$RUST_TARGET/release/cartridge-api" /build/cartridge-api; \
+    fi
+
+# ── Main image ───────────────────────────────────────────────────
 FROM debian:bookworm-slim
 
 LABEL org.opencontainers.image.source=https://github.com/Saturate/cartridge
@@ -151,7 +179,11 @@ RUN . "$NVM_DIR/nvm.sh" \
        @google/gemini-cli \
        --ignore-scripts @earendil-works/pi-coding-agent \
        typescript tsx \
-    && cd "$(npm root -g)/@anthropic-ai/claude-code" && node install.cjs
+    && cd "$(npm root -g)/@anthropic-ai/claude-code" && node install.cjs \
+    && NODE_BIN="$NVM_DIR/versions/node/$(. $NVM_DIR/nvm.sh && nvm version default)/bin" \
+    && for cli in claude codex gemini pi tsx; do \
+         [ -f "$NODE_BIN/$cli" ] && ln -sf "$NODE_BIN/$cli" /usr/local/bin/$cli; \
+       done
 
 # ── Playwright Chromium (container-friendly build) ───────────────
 RUN . "$NVM_DIR/nvm.sh" && npx -y playwright install chromium \
@@ -165,15 +197,18 @@ RUN . "$NVM_DIR/nvm.sh" && npx -y playwright install chromium \
 # ── Python packages ──────────────────────────────────────────────
 RUN pip3 install --break-system-packages httpx
 
+# ── Cartridge API (Rust binary) ──────────────────────────────────
+COPY --from=api-builder /build/cartridge-api /usr/local/bin/cartridge-api
+
 # ── rootfs overlay (s6 services, entrypoint, bootstrap) ─────────
 COPY rootfs/ /
 
 RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/bootstrap.sh \
        /usr/local/bin/cartridge-status /usr/local/bin/cartridge-config \
-       /usr/local/bin/cartridge-notify \
+       /usr/local/bin/cartridge-notify /usr/local/bin/cartridge-api \
     && find /etc/s6-overlay -name "run" -exec chmod +x {} \;
 
 WORKDIR /workspace
-EXPOSE 7681 9222 6080 22
+EXPOSE 7681 9222 6080 22 4500
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

@@ -370,6 +370,205 @@ test_optional_services() {
   cleanup "$c"
 }
 
+# ── API Tests ───────────────────────────────────────────────────
+
+test_api_health() {
+  echo "test: api health"
+  local c="cart-test-api"
+  run_container "$c"
+  wait_ready "$c"
+
+  local health
+  health=$(exec_root "$c" 'curl -sf http://localhost:4500/api/health')
+  assert_contains "health returns ok" "$health" '"ok":true'
+
+  cleanup "$c"
+}
+
+test_api_status() {
+  echo "test: api status"
+  local c="cart-test-api-status"
+  run_container "$c"
+  wait_ready "$c"
+
+  sleep 2
+
+  local status
+  status=$(exec_root "$c" 'curl -sf http://localhost:4500/api/status')
+  assert_contains "status has services" "$status" '"services"'
+  assert_contains "status has runtime" "$status" '"runtime"'
+  assert_contains "status has agents" "$status" '"agents"'
+
+  cleanup "$c"
+}
+
+test_api_run() {
+  echo "test: api run"
+  local c="cart-test-api-run"
+  run_container "$c"
+  wait_ready "$c"
+
+  sleep 2
+
+  local result
+  result=$(exec_root "$c" 'curl -sf -X POST http://localhost:4500/api/run \
+    -H "Content-Type: application/json" \
+    -d "{\"command\":[\"echo\",\"hello\"],\"timeout\":5}"')
+  assert_contains "run returns stdout" "$result" "hello"
+  assert_contains "run returns exit code 0" "$result" '"exit_code":0'
+
+  cleanup "$c"
+}
+
+test_api_agent_lifecycle() {
+  echo "test: api agent lifecycle"
+  local c="cart-test-api-agent"
+  run_container "$c"
+  wait_ready "$c"
+
+  sleep 2
+
+  # Start a custom agent (simple script that runs for a few seconds)
+  local start_resp
+  start_resp=$(exec_root "$c" 'curl -sf -X POST http://localhost:4500/api/agents \
+    -H "Content-Type: application/json" \
+    -d "{\"provider\":\"custom\",\"prompt\":\"\",\"command\":[\"sh\",\"-c\",\"echo started; sleep 5; echo done\"],\"timeout\":10}"')
+  local agent_id
+  agent_id=$(echo "$start_resp" | python3 -c "import sys,json;print(json.load(sys.stdin)['id'])")
+  assert "agent started" "$agent_id"
+
+  # Check it's running
+  sleep 1
+  local status
+  status=$(exec_root "$c" "curl -sf http://localhost:4500/api/agents/$agent_id")
+  assert_contains "agent is running" "$status" '"running"'
+
+  # Check output
+  local output
+  output=$(exec_root "$c" "curl -sf http://localhost:4500/api/agents/$agent_id/output")
+  assert_contains "output has started" "$output" "started"
+
+  # Wait for completion
+  sleep 6
+  status=$(exec_root "$c" "curl -sf http://localhost:4500/api/agents/$agent_id")
+  assert_contains "agent completed" "$status" '"completed"'
+
+  # List agents
+  local list
+  list=$(exec_root "$c" 'curl -sf http://localhost:4500/api/agents')
+  assert_contains "list includes agent" "$list" "$agent_id"
+
+  cleanup "$c"
+}
+
+test_api_agent_stop() {
+  echo "test: api agent stop"
+  local c="cart-test-api-stop"
+  run_container "$c"
+  wait_ready "$c"
+
+  sleep 2
+
+  # Start a long-running agent
+  local start_resp
+  start_resp=$(exec_root "$c" 'curl -sf -X POST http://localhost:4500/api/agents \
+    -H "Content-Type: application/json" \
+    -d "{\"provider\":\"custom\",\"prompt\":\"\",\"command\":[\"sleep\",\"300\"],\"timeout\":600}"')
+  local agent_id
+  agent_id=$(echo "$start_resp" | python3 -c "import sys,json;print(json.load(sys.stdin)['id'])")
+
+  sleep 1
+
+  # Stop it
+  local stop_resp
+  stop_resp=$(exec_root "$c" "curl -sf -X POST http://localhost:4500/api/agents/$agent_id/stop")
+  assert_contains "agent stopped" "$stop_resp" '"stopped"'
+
+  cleanup "$c"
+}
+
+test_api_auth() {
+  echo "test: api auth"
+  local c="cart-test-api-auth"
+  run_container "$c" -e CARTRIDGE_API_TOKEN=test-secret-123
+  wait_ready "$c"
+
+  sleep 2
+
+  # Without token: 401
+  local no_auth
+  no_auth=$(exec_root "$c" 'curl -s -o /dev/null -w "%{http_code}" http://localhost:4500/api/agents')
+  assert_eq "rejects without token" "401" "$no_auth"
+
+  # With token: 200
+  local with_auth
+  with_auth=$(exec_root "$c" 'curl -sf -o /dev/null -w "%{http_code}" -H "Authorization: Bearer test-secret-123" http://localhost:4500/api/agents')
+  assert_eq "accepts with token" "200" "$with_auth"
+
+  # Health bypasses auth
+  local health
+  health=$(exec_root "$c" 'curl -sf -o /dev/null -w "%{http_code}" http://localhost:4500/api/health')
+  assert_eq "health needs no auth" "200" "$health"
+
+  cleanup "$c"
+}
+
+test_api_hooks_installed() {
+  echo "test: api hook plugins installed"
+  local c="cart-test-api-hooks"
+  run_container "$c"
+  wait_ready "$c"
+
+  # Claude Code plugin (symlink to /etc/cartridge/plugins/claude/cartridge-api)
+  assert "claude hook plugin linked" \
+    "$(exec_dev "$c" 'test -L ~/.claude/plugins/cartridge-api && test -f ~/.claude/plugins/cartridge-api/hooks/hooks.json && echo yes')"
+
+  # Pi extension (symlink to /etc/cartridge/plugins/pi/cartridge-hook.ts)
+  assert "pi extension linked" \
+    "$(exec_dev "$c" 'test -L ~/.pi/agent/extensions/cartridge-hook.ts && echo yes')"
+
+  # OpenCode plugin (symlink to /etc/cartridge/plugins/opencode/cartridge-hook.js)
+  assert "opencode plugin linked" \
+    "$(exec_dev "$c" 'test -L ~/.config/opencode/plugins/cartridge-hook.js && echo yes')"
+
+  # bypassPermissions default
+  local settings
+  settings=$(exec_dev "$c" 'cat ~/.claude/settings.local.json 2>/dev/null')
+  assert_contains "bypassPermissions set" "$settings" "bypassPermissions"
+
+  cleanup "$c"
+}
+
+test_api_safe_mode() {
+  echo "test: api safe mode"
+  local c="cart-test-api-safe"
+  run_container "$c" -e CARTRIDGE_API_SAFE_MODE=true
+  wait_ready "$c"
+
+  # bypassPermissions should NOT be set
+  assert "settings.local.json removed" \
+    "$(exec_dev "$c" 'test ! -f ~/.claude/settings.local.json && echo yes')"
+
+  cleanup "$c"
+}
+
+test_api_hooks_disabled() {
+  echo "test: api hooks disabled"
+  local c="cart-test-api-nohooks"
+  run_container "$c" -e CARTRIDGE_HOOKS=false
+  wait_ready "$c"
+
+  # Symlinks should be removed (not renamed to .disabled)
+  assert "claude plugin removed" \
+    "$(exec_dev "$c" 'test ! -e ~/.claude/plugins/cartridge-api && echo yes')"
+  assert "pi extension removed" \
+    "$(exec_dev "$c" 'test ! -e ~/.pi/agent/extensions/cartridge-hook.ts && echo yes')"
+  assert "opencode plugin removed" \
+    "$(exec_dev "$c" 'test ! -e ~/.config/opencode/plugins/cartridge-hook.js && echo yes')"
+
+  cleanup "$c"
+}
+
 # ── Runner ───────────────────────────────────────────────────────
 
 ALL_TESTS=(
@@ -384,6 +583,15 @@ ALL_TESTS=(
   test_user_permissions
   test_uid_remap
   test_optional_services
+  test_api_health
+  test_api_status
+  test_api_run
+  test_api_agent_lifecycle
+  test_api_agent_stop
+  test_api_auth
+  test_api_hooks_installed
+  test_api_safe_mode
+  test_api_hooks_disabled
 )
 
 echo "cartridge integration tests"

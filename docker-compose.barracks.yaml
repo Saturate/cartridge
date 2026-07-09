@@ -1,0 +1,42 @@
+services:
+  barracks:
+    image: oven/bun:1
+    container_name: barracks
+    restart: unless-stopped
+    working_dir: /app
+    command: bun run packages/api/src/index.ts
+    ports:
+      - "127.0.0.1:4400:4400"
+    volumes:
+      - /Users/alkj/code/github/barracks:/app
+      - barracks-db:/app/data
+    environment:
+      - BARRACKS_DB_PATH=/app/data/barracks.db
+      - BARRACKS_HOST=0.0.0.0
+      - OLLAMA_HOST=http://10.106.20.134:11434
+      - SUPERVISOR_ENABLED=true
+      - CARTRIDGE_API_URL=http://cartridge:4500
+      - CARTRIDGE_API_TOKEN=${CARTRIDGE_API_TOKEN:-}
+
+  cartridge:
+    build: .
+    container_name: cartridge
+    restart: unless-stopped
+    shm_size: 2g
+    cap_add: [SYS_ADMIN, SYS_PTRACE]
+    security_opt: [seccomp=unconfined]
+    ports:
+      - "127.0.0.1:7681:7681"
+      - "127.0.0.1:6080:6080"
+      - "127.0.0.1:4500:4500"
+    volumes:
+      - ./data/config:/home/dev/.claude
+      - ./workspace:/workspace
+    environment:
+      - TZ=Europe/Copenhagen
+      - ORCHESTRATOR_URL=http://barracks:4400
+      - CARTRIDGE_API_TOKEN=${CARTRIDGE_API_TOKEN:-}
+      - OLLAMA_HOST=http://10.106.20.134:11434
+
+volumes:
+  barracks-db:

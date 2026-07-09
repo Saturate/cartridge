@@ -15,6 +15,9 @@ spec:
     - name: cdp
       port: {{ .Values.service.ports.cdp }}
       targetPort: cdp
+    - name: api
+      port: {{ .Values.service.ports.api }}
+      targetPort: api
     {{- if .Values.novnc }}
     - name: novnc
       port: {{ .Values.service.ports.novnc }}

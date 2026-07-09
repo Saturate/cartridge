@@ -8,10 +8,62 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  build-api:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            arch: amd64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install musl-tools
+        run: sudo apt-get install -y musl-tools
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            api/target
+          key: cargo-${{ matrix.target }}-${{ hashFiles('api/Cargo.lock') }}
+          restore-keys: cargo-${{ matrix.target }}-
+
+      - name: Build API binary
+        working-directory: api
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Run tests
+        working-directory: api
+        run: cargo test
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: cartridge-api-${{ matrix.arch }}
+          path: api/target/${{ matrix.target }}/release/cartridge-api
+
+  build-image:
+    needs: build-api
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Download API binary
+        uses: actions/download-artifact@v4
+        with:
+          name: cartridge-api-amd64
+          path: api/bin/linux-amd64/
+
+      - name: Make binary executable
+        run: chmod +x api/bin/linux-amd64/cartridge-api
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -23,6 +75,7 @@ jobs:
           push: false
           load: true
           tags: cartridge:test
+          build-args: CARTRIDGE_API_PREBUILT=1
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -37,6 +90,10 @@ jobs:
             sleep 1
           done
 
+          # API health
+          docker exec cart-ci curl -sf http://localhost:4500/api/health
+
+          # Existing checks
           docker exec cart-ci bash -c '
             export NVM_DIR=/usr/local/nvm; . "$NVM_DIR/nvm.sh"
             echo "node: $(node --version)"
@@ -44,6 +101,7 @@ jobs:
             echo "pi: $(pi --version 2>&1)"
             curl -sf http://localhost:7681 > /dev/null && echo "ttyd: ok"
             curl -sf http://localhost:9222/json/version > /dev/null && echo "cdp: ok"
+            curl -sf http://localhost:4500/api/health > /dev/null && echo "api: ok"
           '
 
           docker stop cart-ci

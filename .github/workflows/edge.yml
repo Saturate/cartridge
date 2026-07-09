@@ -13,10 +13,77 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  build-api:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            arch: amd64
+          - target: aarch64-unknown-linux-musl
+            arch: arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+            sudo apt-get install -y gcc-aarch64-linux-gnu
+            mkdir -p ~/.cargo
+            cat >> ~/.cargo/config.toml << 'EOF'
+          [target.aarch64-unknown-linux-musl]
+          linker = "aarch64-linux-gnu-gcc"
+          rustflags = ["-C", "link-self-contained=yes", "-C", "linker-flavor=gcc"]
+          EOF
+          fi
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            api/target
+          key: cargo-${{ matrix.target }}-${{ hashFiles('api/Cargo.lock') }}
+          restore-keys: cargo-${{ matrix.target }}-
+
+      - name: Build API binary
+        working-directory: api
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: cartridge-api-${{ matrix.arch }}
+          path: api/target/${{ matrix.target }}/release/cartridge-api
+
   edge:
+    needs: build-api
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Download amd64 binary
+        uses: actions/download-artifact@v4
+        with:
+          name: cartridge-api-amd64
+          path: api/bin/linux-amd64/
+
+      - name: Download arm64 binary
+        uses: actions/download-artifact@v4
+        with:
+          name: cartridge-api-arm64
+          path: api/bin/linux-arm64/
+
+      - name: Make binaries executable
+        run: chmod +x api/bin/linux-*/cartridge-api
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -40,6 +107,7 @@ jobs:
           tags: |
             ghcr.io/saturate/cartridge:edge
             ghcr.io/saturate/cartridge:main-${{ github.sha }}
+          build-args: CARTRIDGE_API_PREBUILT=1
           cache-from: type=gha
           cache-to: type=gha,mode=max
           labels: |

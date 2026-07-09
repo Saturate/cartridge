@@ -86,6 +86,16 @@ husk:
   persistence:
     size: 2Gi
 
+# --- API ---
+api:
+  token: ""
+  safeMode: false
+  hooks: true
+  maxConcurrent: 10
+  maxAgents: 100
+  bufferSize: 2097152
+  retainSeconds: 3600
+
 # --- Optional services ---
 novnc: false
 skills:
@@ -112,6 +122,7 @@ service:
   ports:
     ttyd: 7681
     cdp: 9222
+    api: 4500
     novnc: 6080
     ssh: 22
 

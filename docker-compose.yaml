@@ -9,6 +9,7 @@ services:
     security_opt: [seccomp=unconfined]
     ports:
       - "127.0.0.1:7681:7681"     # ttyd web terminal
+      - "127.0.0.1:4500:4500"     # cartridge API
       # - "127.0.0.1:6080:6080"   # noVNC (optional)
       # - "127.0.0.1:2222:22"     # SSH (optional)
     volumes:
@@ -40,6 +41,8 @@ services:
       # - TAILSCALE_AUTHKEY=tskey-auth-...
       # - TAILSCALE_HOSTNAME=cartridge-dev
       # - CF_TUNNEL_TOKEN=eyJ...
+      # --- API ---
+      # - CARTRIDGE_API_TOKEN=${CARTRIDGE_API_TOKEN:-}
       # --- Integrations ---
       # - HUSK_ENDPOINT=http://husk:3000
       # - SKILLS_INIT=true

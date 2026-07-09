@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "command",
+        "command": "cartridge-api hook pre-tool-use"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "type": "command",
+        "command": "cartridge-api hook post-tool-use"
+      }
+    ],
+    "Notification": [
+      {
+        "type": "command",
+        "command": "cartridge-api hook notification"
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "cartridge-api hook stop"
+      }
+    ]
+  }
+}
