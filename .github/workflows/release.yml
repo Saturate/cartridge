@@ -20,9 +20,17 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
+      - name: Generate app token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.SATURATE_CI_APP_ID }}
+          private-key: ${{ secrets.SATURATE_CI_PRIVATE_KEY }}
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
 
       - uses: actions/setup-node@v4
         with:
@@ -34,42 +42,49 @@ jobs:
       - name: Check for changesets
         id: check
         run: |
-          if ls .changeset/*.md 1>/dev/null 2>&1; then
-            count=$(ls .changeset/*.md | grep -v README | wc -l)
-            echo "pending=$count" >> "$GITHUB_OUTPUT"
-            echo "$count changeset(s) pending"
-          else
-            echo "pending=0" >> "$GITHUB_OUTPUT"
-            echo "No changesets pending"
-          fi
+          count=$(ls .changeset/*.md 2>/dev/null | grep -cv README || echo 0)
+          echo "pending=$count" >> "$GITHUB_OUTPUT"
+          echo "$count changeset(s) pending"
 
       - name: Version packages
         if: steps.check.outputs.pending != '0'
+        id: version
         run: |
           npm run version
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing v$VERSION"
+
+      - name: Commit and tag
+        if: steps.version.outputs.version && !inputs.dry_run
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
-          VERSION=$(node -p "require('./package.json').version")
-          git commit -m "chore: release v${VERSION}"
-          git tag "v${VERSION}"
-          echo "version=$VERSION" >> "$GITHUB_ENV"
-
-      - name: Push version commit and tag
-        if: env.version && !inputs.dry_run
-        run: |
+          git commit -m "chore: release v${{ steps.version.outputs.version }}"
+          git tag "v${{ steps.version.outputs.version }}"
           git push origin main --follow-tags
 
+      - name: Extract release notes
+        if: steps.version.outputs.version && !inputs.dry_run
+        id: notes
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          BODY=$(sed -n "/^## ${VERSION}/,/^## /{/^## ${VERSION}/d;/^## /d;p;}" CHANGELOG.md)
+          echo "body<<CHANGELOG_EOF" >> "$GITHUB_OUTPUT"
+          echo "$BODY" >> "$GITHUB_OUTPUT"
+          echo "CHANGELOG_EOF" >> "$GITHUB_OUTPUT"
+
       - name: Set up QEMU
-        if: env.version && !inputs.dry_run
+        if: steps.version.outputs.version && !inputs.dry_run
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        if: env.version && !inputs.dry_run
+        if: steps.version.outputs.version && !inputs.dry_run
         uses: docker/setup-buildx-action@v3
 
       - name: Login to GitHub Container Registry
-        if: env.version && !inputs.dry_run
+        if: steps.version.outputs.version && !inputs.dry_run
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -77,42 +92,46 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push release image
-        if: env.version && !inputs.dry_run
+        if: steps.version.outputs.version && !inputs.dry_run
         uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/saturate/cartridge:${{ env.version }}
+            ghcr.io/saturate/cartridge:${{ steps.version.outputs.version }}
             ghcr.io/saturate/cartridge:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
           labels: |
-            org.opencontainers.image.version=${{ env.version }}
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
             org.opencontainers.image.source=https://github.com/Saturate/cartridge
 
       - name: Create GitHub Release
-        if: env.version && !inputs.dry_run
+        if: steps.version.outputs.version && !inputs.dry_run
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ env.version }}
-          name: v${{ env.version }}
-          body_path: CHANGELOG.md
+          token: ${{ steps.app-token.outputs.token }}
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          body: ${{ steps.notes.outputs.body }}
           generate_release_notes: true
 
       - name: Summary
         run: |
-          if [ -n "${{ env.version }}" ]; then
+          if [ -n "${{ steps.version.outputs.version }}" ]; then
             if [ "${{ inputs.dry_run }}" = "true" ]; then
-              echo "## Dry run: v${{ env.version }}" >> "$GITHUB_STEP_SUMMARY"
+              echo "## Dry run: v${{ steps.version.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
               echo "Version bumped locally but not pushed or published." >> "$GITHUB_STEP_SUMMARY"
             else
-              echo "## Released v${{ env.version }}" >> "$GITHUB_STEP_SUMMARY"
-              echo "- Image: \`ghcr.io/saturate/cartridge:${{ env.version }}\`" >> "$GITHUB_STEP_SUMMARY"
+              echo "## Released v${{ steps.version.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+              echo "- Image: \`ghcr.io/saturate/cartridge:${{ steps.version.outputs.version }}\`" >> "$GITHUB_STEP_SUMMARY"
               echo "- Image: \`ghcr.io/saturate/cartridge:latest\`" >> "$GITHUB_STEP_SUMMARY"
+              echo "" >> "$GITHUB_STEP_SUMMARY"
+              echo "### Release notes" >> "$GITHUB_STEP_SUMMARY"
+              echo "${{ steps.notes.outputs.body }}" >> "$GITHUB_STEP_SUMMARY"
             fi
           else
             echo "## No release" >> "$GITHUB_STEP_SUMMARY"
-            echo "No pending changesets found. Add one with \`npx changeset\`." >> "$GITHUB_STEP_SUMMARY"
+            echo "No pending changesets. Add one with \`npx changeset\`." >> "$GITHUB_STEP_SUMMARY"
           fi
