@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/cartridge-icon.png" alt="Cartridge" width="128" height="128" style="image-rendering: pixelated;">
+  <img src="assets/cartridge-icon.png" alt="Cartridge" width="128" height="128">
 </p>
 
 <h1 align="center">Cartridge</h1>
