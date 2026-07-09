@@ -247,6 +247,8 @@ nvm install 20      # install another version
 ### AI Harnesses
 - `claude` - Claude Code (Anthropic)
 - `pi` - Pi coding agent (15+ providers including Ollama)
+- `codex` - OpenAI Codex CLI
+- `gemini` - Google Gemini CLI
 
 ### Development
 - `node`, `npm`, `pnpm`, `bun`, `tsx`, `tsc` - JavaScript/TypeScript

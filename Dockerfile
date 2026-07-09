@@ -147,6 +147,8 @@ RUN case "${TARGETARCH}" in \
 RUN . "$NVM_DIR/nvm.sh" \
     && npm install -g \
        @anthropic-ai/claude-code \
+       @openai/codex \
+       @google/gemini-cli \
        --ignore-scripts @earendil-works/pi-coding-agent \
        typescript tsx \
     && cd "$(npm root -g)/@anthropic-ai/claude-code" && node install.cjs
