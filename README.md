@@ -72,14 +72,19 @@ See `cartridge.example.toml` for all options.
 
 ## Provider auth
 
-| Method | How | Best for |
-|--------|-----|----------|
-| API key | `ANTHROPIC_API_KEY` env var | CI, fleet, org billing |
-| Setup token | `claude setup-token` in terminal | Headless K8s pods |
-| OAuth login | `claude auth login` in terminal | Local dev |
-| Ollama | `OLLAMA_HOST` env var | Local/remote models, no key needed |
+| Harness | Method | How |
+|---------|--------|-----|
+| **Claude Code** | API key | `ANTHROPIC_API_KEY` env var |
+| | Subscription | `claude setup-token` or `claude auth login` in terminal |
+| **Pi** | Ollama | `OLLAMA_HOST` env var (auto-discovers models on boot) |
+| | Any cloud provider | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `GEMINI_API_KEY` |
+| | Subscription | `/login` inside Pi (ChatGPT, Claude, GitHub Copilot) |
+| **Codex** | API key | `OPENAI_API_KEY` env var |
+| | Subscription | `/login` inside Codex (ChatGPT Plus/Pro) |
+| **Gemini CLI** | API key | `GEMINI_API_KEY` env var |
+| | Google OAuth | `gemini` then `/login` in terminal |
 
-Pi auto-configures for Ollama on boot (discovers models, writes config).
+All env vars can also be set via [TOML config](docs/configuration.md).
 
 ## Deploy
 
