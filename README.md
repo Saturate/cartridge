@@ -106,11 +106,11 @@ helm install dev helm/cartridge/ \
 
 ## Docs
 
-- **[USAGE.md](USAGE.md)** - Full configuration reference
-- **[cartridge.example.toml](cartridge.example.toml)** - All config options
-- **[test/integration.sh](test/integration.sh)** - Integration test suite (62 assertions)
+- **[Configuration](docs/configuration.md)** - Full env var + TOML reference with examples
+- **[Tools](docs/tools.md)** - Everything installed in the image
+- **[cartridge.example.toml](cartridge.example.toml)** - Example config file
 
-### Examples
+### Provider examples
 
 - **[Claude Code](docs/examples/claude-code.md)** - API key, subscription, headless, skills
 - **[Ollama](docs/examples/ollama.md)** - Local/remote models, auto-discovery, compose stack
