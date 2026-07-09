@@ -1,0 +1,20 @@
+#!/command/with-contenv bash
+
+[ -n "${TAILSCALE_AUTHKEY:-}" ] || exec sleep infinity
+
+# Start the tailscale daemon
+tailscaled --state=/var/lib/tailscale/tailscaled.state --socket=/var/run/tailscale/tailscaled.sock &
+DAEMON_PID=$!
+
+sleep 2
+
+# Authenticate and bring up the network
+TS_ARGS="--authkey=${TAILSCALE_AUTHKEY} --accept-routes"
+[ -n "${TAILSCALE_HOSTNAME:-}" ] && TS_ARGS="$TS_ARGS --hostname=${TAILSCALE_HOSTNAME}"
+[ -n "${TAILSCALE_TAGS:-}" ] && TS_ARGS="$TS_ARGS --advertise-tags=${TAILSCALE_TAGS}"
+
+tailscale --socket=/var/run/tailscale/tailscaled.sock up $TS_ARGS 2>&1
+
+echo "[tailscale] connected: $(tailscale --socket=/var/run/tailscale/tailscaled.sock ip -4 2>/dev/null)"
+
+wait $DAEMON_PID

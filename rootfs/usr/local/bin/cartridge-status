@@ -93,6 +93,31 @@ fi
 
 echo ""
 
+# ── Tunnels ──────────────────────────────────────────────────────
+echo "tunnels:"
+if [ -n "${TAILSCALE_AUTHKEY:-}" ]; then
+  ts_ip=$(tailscale --socket=/var/run/tailscale/tailscaled.sock ip -4 2>/dev/null)
+  if [ -n "$ts_ip" ]; then
+    ts_name=$(tailscale --socket=/var/run/tailscale/tailscaled.sock status --self 2>/dev/null | awk '{print $2; exit}')
+    echo -e "  tailscale: ${ok} (${ts_ip} ${ts_name:-})"
+  else
+    echo -e "  tailscale: ${warn} (authkey set, not connected)"
+  fi
+else
+  echo -e "  tailscale: ${no} (set TAILSCALE_AUTHKEY)"
+fi
+if [ -n "${CF_TUNNEL_TOKEN:-}" ]; then
+  if pgrep -f cloudflared >/dev/null 2>&1; then
+    echo -e "  cloudflared: ${ok} (running)"
+  else
+    echo -e "  cloudflared: ${warn} (token set, not running)"
+  fi
+else
+  echo -e "  cloudflared: ${no} (set CF_TUNNEL_TOKEN)"
+fi
+
+echo ""
+
 # ── Runtime ──────────────────────────────────────────────────────
 echo "runtime:"
 echo "  node:  $(node --version 2>/dev/null || echo 'not found')"

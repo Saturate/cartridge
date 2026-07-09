@@ -101,6 +101,35 @@ bootstrap runs `git init` so agents have git available from the start.
 If the workspace already contains files or a `.git` directory, bootstrap
 leaves it alone.
 
+### Tunnels
+
+Make the container reachable from anywhere without port forwarding.
+
+**Tailscale (private mesh):**
+```yaml
+environment:
+  - TAILSCALE_AUTHKEY=tskey-auth-...
+  - TAILSCALE_HOSTNAME=cartridge-dev  # optional
+  - TAILSCALE_TAGS=tag:dev            # optional ACL tags
+```
+
+Generate an auth key at https://login.tailscale.com/admin/settings/keys.
+The container joins your tailnet and gets a stable IP. Access ttyd at
+`http://cartridge-dev:7681` from any device on the tailnet.
+
+**Cloudflare Tunnel (public URLs):**
+```yaml
+environment:
+  - CF_TUNNEL_TOKEN=eyJ...
+```
+
+Create a tunnel at https://one.dash.cloudflare.com/ and configure it to
+route to `http://localhost:7681` (ttyd) or other container ports. The
+container gets a public `*.cfargotunnel.com` URL or your custom domain.
+
+**Neither is required.** Without tunnel config, services are only
+accessible via the mapped Docker ports.
+
 ## Environment Variables Reference
 
 ### Provider Auth
@@ -124,6 +153,15 @@ leaves it alone.
 | `GIT_WORKTREE_REPO` | Create a worktree from this repo |
 | `GIT_WORKTREE_BRANCH` | Branch for the worktree (default: `main`) |
 
+### Tunnels
+
+| Variable | Description |
+|----------|-------------|
+| `TAILSCALE_AUTHKEY` | Tailscale auth key (enables tailscale service) |
+| `TAILSCALE_HOSTNAME` | Hostname on the tailnet (optional) |
+| `TAILSCALE_TAGS` | ACL tags, e.g. `tag:dev` (optional) |
+| `CF_TUNNEL_TOKEN` | Cloudflare Tunnel token (enables cloudflared service) |
+
 ### Container Config
 
 | Variable | Default | Description |
@@ -133,6 +171,7 @@ leaves it alone.
 | `TZ` | `UTC` | Timezone |
 | `NOVNC_ENABLE` | unset | Set to `true` to enable noVNC on :6080 |
 | `SSH_ENABLE` | unset | Set to `true` to enable sshd on :22 |
+| `SSH_AUTHORIZED_KEYS` | unset | Public key(s) to install for the dev user |
 | `SKILLS_INIT` | unset | Set to `true` to symlink /skills into Claude config |
 | `PK_MODE` | unset | Set to `true` for PromptKiddie integration |
 

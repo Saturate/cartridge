@@ -127,6 +127,22 @@ RUN mkdir -p /run/sshd \
     && sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config \
     && sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config
 
+# ── Tailscale + Cloudflared (tunneling, opt-in) ─────────────────
+RUN curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg \
+      -o /usr/share/keyrings/tailscale-archive-keyring.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/debian bookworm main" \
+      > /etc/apt/sources.list.d/tailscale.list \
+    && apt-get update && apt-get install -y --no-install-recommends tailscale \
+    && apt-get clean && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /var/run/tailscale /var/lib/tailscale
+RUN case "${TARGETARCH}" in \
+      amd64) CF_ARCH="amd64" ;; \
+      arm64) CF_ARCH="arm64" ;; \
+    esac \
+    && curl -fsSL -o /usr/local/bin/cloudflared \
+       "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${CF_ARCH}" \
+    && chmod +x /usr/local/bin/cloudflared
+
 # ── AI CLIs + global tooling ─────────────────────────────────────
 RUN . "$NVM_DIR/nvm.sh" \
     && npm install -g \

@@ -33,6 +33,13 @@ services:
       # - GIT_BRANCH=main
       # - GIT_WORKTREE_REPO=/path/to/parent/repo
       # - GIT_WORKTREE_BRANCH=feature-branch
+      # --- SSH ---
+      # - SSH_ENABLE=true
+      # - SSH_AUTHORIZED_KEYS=ssh-ed25519 AAAA... user@host
+      # --- Tunnels ---
+      # - TAILSCALE_AUTHKEY=tskey-auth-...
+      # - TAILSCALE_HOSTNAME=cartridge-dev
+      # - CF_TUNNEL_TOKEN=eyJ...
       # --- Integrations ---
       # - HUSK_ENDPOINT=http://husk:3000
       # - SKILLS_INIT=true

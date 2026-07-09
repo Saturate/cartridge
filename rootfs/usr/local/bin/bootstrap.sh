@@ -176,6 +176,25 @@ if [ -n "${SHOUTRRR_URL:-}" ]; then
   log "shoutrrr: notification URL configured"
 fi
 
+# ── SSH authorized keys ──────────────────────────────────────────
+if [ -n "${SSH_AUTHORIZED_KEYS:-}" ]; then
+  SSH_DIR="$HOME_DIR/.ssh"
+  mkdir -p "$SSH_DIR"
+  chmod 700 "$SSH_DIR"
+  echo "$SSH_AUTHORIZED_KEYS" > "$SSH_DIR/authorized_keys"
+  chmod 600 "$SSH_DIR/authorized_keys"
+  chown -R dev:dev "$SSH_DIR"
+  log "ssh: authorized keys installed"
+fi
+
+# ── Tunneling ────────────────────────────────────────────────────
+if [ -n "${TAILSCALE_AUTHKEY:-}" ]; then
+  log "tailscale: authkey set, will connect on service start"
+fi
+if [ -n "${CF_TUNNEL_TOKEN:-}" ]; then
+  log "cloudflared: tunnel token set, will connect on service start"
+fi
+
 # ── HUSK OTel wiring ─────────────────────────────────────────────
 if [ -n "${HUSK_ENDPOINT:-}" ]; then
   mkdir -p "$HOME_DIR/.claude"

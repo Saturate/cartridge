@@ -1,0 +1,5 @@
+#!/command/with-contenv bash
+
+[ -n "${CF_TUNNEL_TOKEN:-}" ] || exec sleep infinity
+
+exec cloudflared tunnel --no-autoupdate run --token "${CF_TUNNEL_TOKEN}"
