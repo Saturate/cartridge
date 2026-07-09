@@ -1,0 +1,16 @@
+{
+  "name": "cartridge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI dev harness container",
+  "scripts": {
+    "changeset": "changeset",
+    "version": "changeset version",
+    "build": "docker compose build",
+    "test": "./test/integration.sh"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.29.0",
+    "@changesets/changelog-github": "^0.5.1"
+  }
+}

@@ -1,8 +1,15 @@
 data/
 workspace/
+node_modules/
 .git
+.github/
+.changeset/
 .DS_Store
 *.db
 .env
 *.md
 docker-compose*.yaml
+helm/
+docs/
+test/
+assets/
