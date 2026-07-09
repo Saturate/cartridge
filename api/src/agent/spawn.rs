@@ -130,6 +130,7 @@ pub fn spawn_agent(
         created_at: Instant::now(),
         ring_buffer: RingBuffer::new(config.buffer_size),
         events: EventBuffer::new(config.max_events),
+        messages: super::messages::MessageStore::new(),
         broadcast_tx: broadcast_tx.clone(),
         pty_cmd_tx: Some(pty_cmd_tx),
         hooks_enabled: req.hooks,
