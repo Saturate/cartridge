@@ -1,0 +1,269 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "cartridge.fullname" . }}
+  labels:
+    {{- include "cartridge.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  serviceName: {{ include "cartridge.fullname" . }}
+  selector:
+    matchLabels:
+      {{- include "cartridge.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "cartridge.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        sysctls:
+          - name: net.ipv4.ip_unprivileged_port_start
+            value: "0"
+      containers:
+        - name: cartridge
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            capabilities:
+              add: [SYS_ADMIN, SYS_PTRACE]
+          env:
+            - name: TZ
+              value: {{ .Values.timezone | quote }}
+            - name: PUID
+              value: {{ .Values.puid | quote }}
+            - name: PGID
+              value: {{ .Values.pgid | quote }}
+            {{- if .Values.providers.anthropicApiKey }}
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cartridge.fullname" . }}-secrets
+                  key: anthropic-api-key
+            {{- end }}
+            {{- if .Values.providers.ollamaHost }}
+            - name: OLLAMA_HOST
+              value: {{ .Values.providers.ollamaHost | quote }}
+            {{- end }}
+            {{- if .Values.providers.ollamaModels }}
+            - name: OLLAMA_MODELS
+              value: {{ .Values.providers.ollamaModels | quote }}
+            {{- end }}
+            {{- if .Values.providers.openaiApiKey }}
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cartridge.fullname" . }}-secrets
+                  key: openai-api-key
+            {{- end }}
+            {{- if .Values.providers.geminiApiKey }}
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cartridge.fullname" . }}-secrets
+                  key: gemini-api-key
+            {{- end }}
+            {{- if .Values.providers.ghToken }}
+            - name: GH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cartridge.fullname" . }}-secrets
+                  key: gh-token
+            {{- end }}
+            {{- if .Values.workspace.repoUrl }}
+            - name: GIT_REPO_URL
+              value: {{ .Values.workspace.repoUrl | quote }}
+            {{- end }}
+            {{- if .Values.workspace.branch }}
+            - name: GIT_BRANCH
+              value: {{ .Values.workspace.branch | quote }}
+            {{- end }}
+            {{- if .Values.workspace.worktreeRepo }}
+            - name: GIT_WORKTREE_REPO
+              value: {{ .Values.workspace.worktreeRepo | quote }}
+            {{- end }}
+            {{- if .Values.workspace.worktreeBranch }}
+            - name: GIT_WORKTREE_BRANCH
+              value: {{ .Values.workspace.worktreeBranch | quote }}
+            {{- end }}
+            {{- if .Values.ssh.enabled }}
+            - name: SSH_ENABLE
+              value: "true"
+            {{- end }}
+            {{- if .Values.ssh.authorizedKeys }}
+            - name: SSH_AUTHORIZED_KEYS
+              value: {{ .Values.ssh.authorizedKeys | quote }}
+            {{- end }}
+            {{- if .Values.tunnels.tailscale.authkey }}
+            - name: TAILSCALE_AUTHKEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cartridge.fullname" . }}-secrets
+                  key: tailscale-authkey
+            {{- end }}
+            {{- if .Values.tunnels.tailscale.hostname }}
+            - name: TAILSCALE_HOSTNAME
+              value: {{ .Values.tunnels.tailscale.hostname | quote }}
+            {{- end }}
+            {{- if .Values.tunnels.tailscale.tags }}
+            - name: TAILSCALE_TAGS
+              value: {{ .Values.tunnels.tailscale.tags | quote }}
+            {{- end }}
+            {{- if .Values.tunnels.cloudflare.tunnelToken }}
+            - name: CF_TUNNEL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cartridge.fullname" . }}-secrets
+                  key: cf-tunnel-token
+            {{- end }}
+            {{- if .Values.notifications.shoutrrrUrl }}
+            - name: SHOUTRRR_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cartridge.fullname" . }}-secrets
+                  key: shoutrrr-url
+            {{- end }}
+            {{- if .Values.novnc }}
+            - name: NOVNC_ENABLE
+              value: "true"
+            {{- end }}
+            {{- if .Values.husk.enabled }}
+            - name: HUSK_ENDPOINT
+              value: "http://localhost:3000"
+            {{- end }}
+            {{- if .Values.skills.enabled }}
+            - name: SKILLS_INIT
+              value: "true"
+            {{- end }}
+          ports:
+            - name: ttyd
+              containerPort: 7681
+            - name: cdp
+              containerPort: 9222
+            {{- if .Values.novnc }}
+            - name: novnc
+              containerPort: 6080
+            {{- end }}
+            {{- if .Values.ssh.enabled }}
+            - name: ssh
+              containerPort: 22
+            {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: /home/dev/.claude
+            - name: workspace
+              mountPath: /workspace
+            - name: shm
+              mountPath: /dev/shm
+            {{- if .Values.providers.authSecretName }}
+            - name: auth
+              mountPath: /home/dev/.claude
+            {{- end }}
+            {{- if .Values.config }}
+            - name: toml-config
+              mountPath: /etc/cartridge
+              readOnly: true
+            {{- end }}
+            {{- if .Values.skills.configMapName }}
+            - name: skills
+              mountPath: /skills
+              readOnly: true
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: ttyd
+            initialDelaySeconds: 10
+            periodSeconds: 5
+
+        {{- if .Values.husk.enabled }}
+        - name: husk
+          image: {{ .Values.husk.image }}
+          env:
+            - name: DATABASE_URL
+              value: "file:/data/husk.db"
+            {{- if .Values.husk.apiKey }}
+            - name: HUSK_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cartridge.fullname" . }}-secrets
+                  key: husk-api-key
+            {{- end }}
+          ports:
+            - name: husk
+              containerPort: 3000
+          volumeMounts:
+            - name: husk-data
+              mountPath: /data
+          resources:
+            {{- toYaml .Values.husk.resources | nindent 12 }}
+        {{- end }}
+
+      volumes:
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: {{ .Values.shmSize }}
+        {{- if .Values.providers.authSecretName }}
+        - name: auth
+          secret:
+            secretName: {{ .Values.providers.authSecretName }}
+        {{- end }}
+        {{- if .Values.config }}
+        - name: toml-config
+          configMap:
+            name: {{ include "cartridge.fullname" . }}-config
+        {{- end }}
+        {{- if .Values.skills.configMapName }}
+        - name: skills
+          configMap:
+            name: {{ .Values.skills.configMapName }}
+        {{- end }}
+
+  volumeClaimTemplates:
+    {{- if .Values.persistence.config.enabled }}
+    - metadata:
+        name: config
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.persistence.config.storageClass }}
+        storageClassName: {{ .Values.persistence.config.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.config.size }}
+    {{- end }}
+    {{- if .Values.persistence.workspace.enabled }}
+    - metadata:
+        name: workspace
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.persistence.workspace.storageClass }}
+        storageClassName: {{ .Values.persistence.workspace.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.workspace.size }}
+    {{- end }}
+    {{- if .Values.husk.enabled }}
+    - metadata:
+        name: husk-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: {{ .Values.husk.persistence.size }}
+    {{- end }}

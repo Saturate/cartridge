@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cartridge.fullname" . }}
+  labels:
+    {{- include "cartridge.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "cartridge.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: ttyd
+      port: {{ .Values.service.ports.ttyd }}
+      targetPort: ttyd
+    - name: cdp
+      port: {{ .Values.service.ports.cdp }}
+      targetPort: cdp
+    {{- if .Values.novnc }}
+    - name: novnc
+      port: {{ .Values.service.ports.novnc }}
+      targetPort: novnc
+    {{- end }}
+    {{- if .Values.ssh.enabled }}
+    - name: ssh
+      port: {{ .Values.service.ports.ssh }}
+      targetPort: ssh
+    {{- end }}

@@ -1,0 +1,134 @@
+# Cartridge Helm values
+# One pod per developer session, StatefulSet for stable DNS.
+
+image:
+  repository: ghcr.io/saturate/cartridge
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Per-session resource limits
+resources:
+  requests:
+    cpu: "1"
+    memory: 2Gi
+  limits:
+    cpu: "4"
+    memory: 8Gi
+
+# Shared memory for Chromium
+shmSize: 2Gi
+
+# --- Persistence ---
+persistence:
+  config:
+    enabled: true
+    size: 1Gi
+    storageClass: ""
+    # Mount: /home/dev/.claude (auth, skills, session state)
+  workspace:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+    # Mount: /workspace (project files)
+
+# --- Provider auth ---
+# Set values directly or reference existing K8s secrets.
+providers:
+  # Option 1: API key (simplest for fleet)
+  anthropicApiKey: ""
+  # Option 2: mount existing secret with Claude auth files
+  # The secret should contain the files from ~/.claude/
+  authSecretName: ""
+
+  ollamaHost: ""
+  ollamaModels: ""
+  openaiApiKey: ""
+  geminiApiKey: ""
+  ghToken: ""
+
+# --- Workspace ---
+workspace:
+  repoUrl: ""
+  branch: ""
+  worktreeRepo: ""
+  worktreeBranch: ""
+
+# --- SSH ---
+ssh:
+  enabled: false
+  authorizedKeys: ""
+
+# --- Tunnels ---
+tunnels:
+  tailscale:
+    authkey: ""
+    hostname: ""
+    tags: ""
+  cloudflare:
+    tunnelToken: ""
+
+# --- Notifications ---
+notifications:
+  shoutrrrUrl: ""
+
+# --- HUSK sidecar ---
+husk:
+  enabled: false
+  image: ghcr.io/saturate/husk:latest
+  apiKey: ""
+  resources:
+    requests:
+      cpu: "100m"
+      memory: 128Mi
+    limits:
+      cpu: "500m"
+      memory: 512Mi
+  persistence:
+    size: 2Gi
+
+# --- Optional services ---
+novnc: false
+skills:
+  enabled: false
+  # Mount a ConfigMap or PVC at /skills
+  configMapName: ""
+
+# --- Container config ---
+timezone: "UTC"
+puid: 1000
+pgid: 1000
+
+# --- TOML config file ---
+# Inline a cartridge.toml; mounted at /etc/cartridge/config.toml
+config: ""
+# Example:
+# config: |
+#   [providers]
+#   ollama_host = "http://ollama.default.svc:11434"
+
+# --- Networking ---
+service:
+  type: ClusterIP
+  ports:
+    ttyd: 7681
+    cdp: 9222
+    novnc: 6080
+    ssh: 22
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts: []
+  #  - host: cartridge.example.com
+  #    paths:
+  #      - path: /
+  #        port: ttyd
+  tls: []
+
+# Number of sessions (pods)
+replicaCount: 1
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

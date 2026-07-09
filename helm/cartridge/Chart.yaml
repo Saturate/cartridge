@@ -1,0 +1,12 @@
+apiVersion: v2
+name: cartridge
+description: AI dev harness container - one pod per session
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - ai
+  - coding-agent
+  - claude
+  - dev-container
+home: https://github.com/Saturate/cartridge
