@@ -10,7 +10,7 @@
 
 <p align="center">
   A portable, provider-agnostic container for AI-assisted development.<br>
-  Ships as a Docker image. Works standalone, with Eye, or in K8s.
+  Ships as a Docker image. Works in K8s, docker compose or whereever you like your images.
 </p>
 
 ---
@@ -102,7 +102,6 @@ helm install dev helm/cartridge/ \
 
 ## Ecosystem
 
-- **[HUSK](https://github.com/Saturate/husk)** - OTel telemetry sidecar
 - **[Barracks](https://github.com/Saturate/barracks)** - Orchestrator that runs Cartridge pods
 
 ## Docs
