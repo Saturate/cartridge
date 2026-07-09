@@ -1,0 +1,223 @@
+<title>Cartridge Icon</title>
+<style>
+  :root {
+    --bg: #0f0f13;
+    --surface: #1a1a22;
+    --text: #c8c8d0;
+    --dim: #6a6a78;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #f2f0ec; --surface: #fff; --text: #2a2a32; --dim: #8a8a94; }
+  }
+  :root[data-theme="dark"] { --bg: #0f0f13; --surface: #1a1a22; --text: #c8c8d0; --dim: #6a6a78; }
+  :root[data-theme="light"] { --bg: #f2f0ec; --surface: #fff; --text: #2a2a32; --dim: #8a8a94; }
+
+  * { margin: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'SF Mono', 'Cascadia Code', 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2.5rem; padding: 2rem;
+  }
+  h1 { font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.15em; color: var(--dim); }
+  .icon-row { display: flex; align-items: end; gap: 3rem; flex-wrap: wrap; justify-content: center; }
+  .icon-frame { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
+  .icon-frame span { font-size: 0.65rem; color: var(--dim); letter-spacing: 0.08em; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
+  .download-row { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+  button {
+    background: var(--surface); color: var(--text); border: 1px solid var(--dim);
+    padding: 0.5rem 1rem; font-family: inherit; font-size: 0.7rem;
+    letter-spacing: 0.05em; cursor: pointer; transition: border-color 0.15s;
+  }
+  button:hover { border-color: var(--text); }
+  button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+</style>
+
+<h1>Cartridge</h1>
+<div class="icon-row">
+  <div class="icon-frame">
+    <canvas id="c1" width="64" height="64" style="width:128px;height:128px"></canvas>
+    <span>128px</span>
+  </div>
+  <div class="icon-frame">
+    <canvas id="c2" width="64" height="64" style="width:256px;height:256px"></canvas>
+    <span>256px</span>
+  </div>
+  <div class="icon-frame">
+    <canvas id="c3" width="64" height="64" style="width:384px;height:384px"></canvas>
+    <span>384px</span>
+  </div>
+</div>
+<div class="download-row">
+  <button onclick="dl(64)">64px</button>
+  <button onclick="dl(128)">128px</button>
+  <button onclick="dl(256)">256px</button>
+  <button onclick="dl(512)">512px</button>
+  <button onclick="dl(1024)">1024px</button>
+</div>
+
+<script>
+const W = 64, H = 64;
+const src = document.createElement('canvas');
+src.width = W; src.height = H;
+const ctx = src.getContext('2d');
+
+const C = {
+  ol:  '#13253a',
+  b1:  '#1a3352', b2: '#265580', b3: '#3472a8', b4: '#4a8cc4', b5: '#5a9cd4',
+  lb:  '#dcd4c4', ld: '#ccc2b0', ls: '#bab0a0', lt: '#283848',
+  g1:  '#a8842a', g2: '#c89e38', g3: '#deb848', g4: '#ecd060',
+  led: '#44ddbb', le2: '#33bb99', le3: '#228866',
+  sh:  '#0c1620', sh2: '#0a1018',
+  gr:  '#2e6090',
+};
+
+function px(x, y, c) { ctx.fillStyle = c; ctx.fillRect(x, y, 1, 1); }
+function hline(x1, x2, y, c) { ctx.fillStyle = c; ctx.fillRect(x1, y, x2 - x1 + 1, 1); }
+function vline(x, y1, y2, c) { ctx.fillStyle = c; ctx.fillRect(x, y1, 1, y2 - y1 + 1); }
+function rect(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); }
+
+// Body outline
+rect(7, 3, 50, 1, C.ol);    // top
+rect(7, 49, 50, 1, C.ol);   // bottom ledge
+rect(6, 4, 1, 45, C.ol);    // left
+rect(57, 4, 1, 45, C.ol);   // right
+
+// Body fill
+rect(7, 4, 50, 45, C.b2);
+
+// Top highlight
+hline(7, 56, 4, C.b4);
+hline(7, 56, 5, C.b3);
+
+// Left highlight
+vline(7, 5, 48, C.b3);
+vline(8, 5, 48, C.b3);
+
+// Right shadow
+vline(56, 5, 48, C.b1);
+vline(55, 5, 48, C.b1);
+
+// Bottom shadow
+hline(7, 56, 47, C.b1);
+hline(7, 56, 48, C.b1);
+
+// Grip ridges at top
+for (let i = 0; i < 4; i++) {
+  const y = 6 + i * 2;
+  hline(9, 54, y, C.gr);
+}
+
+// ── Label area ──────────────────────────
+rect(10, 14, 44, 18, C.lb);
+// Label border
+hline(10, 53, 14, C.ls);
+hline(10, 53, 31, C.ls);
+vline(10, 14, 31, C.ls);
+vline(53, 14, 31, C.ls);
+// Inner highlight
+hline(11, 52, 15, '#e8e0d0');
+vline(11, 15, 30, '#e8e0d0');
+
+// ── "CARTRIDGE" text on label (5px tall font) ──
+const font = {
+  C: [[1,1,1],[1,0,0],[1,0,0],[1,0,0],[1,1,1]],
+  A: [[0,1,0],[1,0,1],[1,1,1],[1,0,1],[1,0,1]],
+  R: [[1,1,0],[1,0,1],[1,1,0],[1,0,1],[1,0,1]],
+  T: [[1,1,1],[0,1,0],[0,1,0],[0,1,0],[0,1,0]],
+  I: [[1,1,1],[0,1,0],[0,1,0],[0,1,0],[1,1,1]],
+  D: [[1,1,0],[1,0,1],[1,0,1],[1,0,1],[1,1,0]],
+  G: [[1,1,1],[1,0,0],[1,0,1],[1,0,1],[1,1,1]],
+  E: [[1,1,1],[1,0,0],[1,1,0],[1,0,0],[1,1,1]],
+};
+const word = "CARTRIDGE";
+const charW = 4; // 3px char + 1px gap
+const totalW = word.length * charW - 1;
+const startX = Math.floor(10 + (44 - totalW) / 2);
+const startY = 19;
+
+for (let ci = 0; ci < word.length; ci++) {
+  const glyph = font[word[ci]];
+  if (!glyph) continue;
+  for (let gy = 0; gy < glyph.length; gy++) {
+    for (let gx = 0; gx < glyph[gy].length; gx++) {
+      if (glyph[gy][gx]) {
+        px(startX + ci * charW + gx, startY + gy, C.lt);
+      }
+    }
+  }
+}
+
+// Decorative line under text
+hline(14, 49, 26, C.ls);
+
+// Small version/detail text dots
+for (let x = 16; x < 48; x += 3) {
+  px(x, 28, C.ls);
+}
+
+// ── LED indicator ───────────────────────
+rect(48, 35, 3, 2, C.led);
+rect(51, 35, 1, 2, C.le2);
+rect(48, 37, 3, 1, C.le3);
+// Glow pixel
+px(47, 35, C.le3);
+px(48, 34, C.le3);
+
+// ── Cartridge slot (bottom cutout) ──────
+rect(14, 50, 36, 8, C.sh);
+// Slot border
+hline(14, 49, 50, C.sh);
+vline(14, 50, 57, C.ol);
+vline(49, 50, 57, C.ol);
+hline(14, 49, 57, C.ol);
+// Inner shadow
+vline(15, 51, 56, C.sh2);
+hline(15, 48, 51, C.sh2);
+
+// ── Connector pins ──────────────────────
+const pinY = 58;
+for (let x = 16; x < 48; x += 2) {
+  px(x, pinY,     C.g4);
+  px(x, pinY + 1, C.g3);
+  px(x, pinY + 2, C.g2);
+  px(x, pinY + 3, C.g1);
+  // Gap between pins
+  if (x + 1 < 48) {
+    px(x + 1, pinY,     C.g2);
+    px(x + 1, pinY + 1, C.g1);
+    px(x + 1, pinY + 2, C.g1);
+    px(x + 1, pinY + 3, C.sh);
+  }
+}
+// Pin shadow
+hline(16, 47, pinY + 4, C.sh);
+
+// ── Screw holes ─────────────────────────
+px(12, 35, C.b1); px(13, 35, C.ol); px(12, 36, C.ol); px(13, 36, C.b4);
+px(12, 43, C.b1); px(13, 43, C.ol); px(12, 44, C.ol); px(13, 44, C.b4);
+
+// Draw to display canvases
+['c1','c2','c3'].forEach(id => {
+  const c = document.getElementById(id);
+  const cx = c.getContext('2d');
+  cx.imageSmoothingEnabled = false;
+  cx.drawImage(src, 0, 0, W, H, 0, 0, c.width, c.height);
+});
+
+function dl(size) {
+  const c = document.createElement('canvas');
+  c.width = size; c.height = size;
+  const cx = c.getContext('2d');
+  cx.clearRect(0, 0, size, size);
+  cx.imageSmoothingEnabled = false;
+  cx.drawImage(src, 0, 0, size, size);
+  const dataUrl = c.toDataURL('image/png');
+  const w = window.open('about:blank');
+  if (w) {
+    w.document.write('<img src="' + dataUrl + '" style="image-rendering:pixelated"><p>Right-click and Save As</p>');
+  }
+}
+</script>
