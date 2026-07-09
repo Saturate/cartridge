@@ -100,23 +100,8 @@ helm install dev helm/cartridge/ \
   --set tunnels.tailscale.authkey=tskey-auth-...
 ```
 
-## Architecture
-
-```
-s6-overlay (PID 1)
-  ├── ttyd              :7681   web terminal
-  ├── xvfb              :99     virtual display
-  ├── chrome            :9222   browser CDP
-  ├── state-sync                dotfile persistence
-  ├── novnc             :6080   browser viewport (opt-in)
-  ├── sshd              :22     SSH access (opt-in)
-  ├── tailscale                 mesh networking (opt-in)
-  └── cloudflared               tunnel (opt-in)
-```
-
 ## Ecosystem
 
-- **[Eye](https://github.com/Saturate/eye)** - Agent board UI that manages sessions inside Cartridge
 - **[HUSK](https://github.com/Saturate/husk)** - OTel telemetry sidecar
 - **[Barracks](https://github.com/Saturate/barracks)** - Orchestrator that runs Cartridge pods
 
