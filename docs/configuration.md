@@ -15,6 +15,25 @@ docker run -e OLLAMA_HOST=http://host:11434 ...
 docker run -v ./cartridge.toml:/etc/cartridge/config.toml:ro ...
 ```
 
+## Authentication
+
+Each harness supports multiple auth methods. Env vars are the simplest; interactive login persists to the mounted volume.
+
+| Harness | Method | How | Best for |
+|---------|--------|-----|----------|
+| **Claude Code** | API key | `ANTHROPIC_API_KEY` env var | CI, fleet, org billing |
+| | Setup token | `claude setup-token` in terminal | Headless K8s pods |
+| | OAuth login | `claude auth login` in terminal | Local dev, interactive |
+| **Pi** | Ollama | `OLLAMA_HOST` env var (auto-discovers models on boot) | Local/remote models, no key needed |
+| | Cloud API key | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `GEMINI_API_KEY` | Cloud providers via Pi |
+| | Subscription | `/login` inside Pi (ChatGPT, Claude, GitHub Copilot) | Subscription users |
+| **Codex** | API key | `OPENAI_API_KEY` env var | CI, fleet |
+| | Subscription | `/login` inside Codex (ChatGPT Plus/Pro) | ChatGPT subscribers |
+| **Gemini CLI** | API key | `GEMINI_API_KEY` env var | CI, fleet |
+| | Google OAuth | `/login` inside Gemini CLI | Google account holders |
+
+For K8s, mount a Secret containing auth files at `/home/dev/.claude/` (Claude Code) or `/home/dev/.pi/agent/` (Pi). See [Kubernetes example](examples/kubernetes.md).
+
 ## Full reference
 
 Every configuration option, its env var, TOML key, and what it does.
