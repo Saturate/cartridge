@@ -1,4 +1,5 @@
 pub mod events;
+pub mod messages;
 pub mod provider;
 pub mod ring_buffer;
 pub mod spawn;
@@ -13,6 +14,7 @@ use tokio::sync::{broadcast, mpsc, RwLock};
 
 use crate::config::Config;
 use events::EventBuffer;
+use messages::MessageStore;
 use ring_buffer::RingBuffer;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
@@ -86,6 +88,7 @@ pub struct AgentState {
     pub created_at: Instant,
     pub ring_buffer: RingBuffer,
     pub events: EventBuffer,
+    pub messages: MessageStore,
     pub broadcast_tx: broadcast::Sender<BroadcastMessage>,
     pub pty_cmd_tx: Option<mpsc::Sender<PtyCommand>>,
     pub hooks_enabled: bool,
