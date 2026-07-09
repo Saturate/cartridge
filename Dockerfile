@@ -189,7 +189,7 @@ RUN . "$NVM_DIR/nvm.sh" \
 RUN . "$NVM_DIR/nvm.sh" && npx -y playwright install chromium \
     && npx -y playwright install-deps chromium \
     && mv /root/.cache/ms-playwright /opt/playwright \
-    && ln -sf "$(find /opt/playwright -name chrome -path '*/chrome-linux/*' -type f | head -1)" \
+    && ln -sf "$(find /opt/playwright -name chrome -path '*/chrome-linux*' -type f | head -1)" \
        /usr/local/bin/chrome-playwright \
     && chmod -R o+rx /opt/playwright \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
