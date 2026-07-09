@@ -46,4 +46,3 @@ services:
       # --- Integrations ---
       # - HUSK_ENDPOINT=http://husk:3000
       # - SKILLS_INIT=true
-      # - PK_MODE=true

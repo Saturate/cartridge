@@ -224,13 +224,6 @@ if [ "${SKILLS_INIT:-}" = "true" ] && [ -d /skills ]; then
   [ $count -gt 0 ] && log "skills: linked $count from /skills"
 fi
 
-# ── PromptKiddie integration ─────────────────────────────────────
-if [ "${PK_MODE:-}" = "true" ]; then
-  if command -v pk &>/dev/null; then
-    log "promptkiddie: active"
-  fi
-fi
-
 # ── API hook plugin installation ─────────────────────────────────
 PLUGIN_SRC="/etc/cartridge/plugins"
 
