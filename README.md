@@ -21,7 +21,7 @@ Four AI harnesses, a headless browser, a web terminal, and everything a coding a
 
 | Category | Included |
 |----------|----------|
-| **AI Harnesses** | Claude Code, Pi, OpenAI Codex, Google Gemini CLI |
+| **AI Harnesses** | [Claude Code](https://github.com/anthropics/claude-code), [Pi](https://pi.dev), [OpenAI Codex](https://github.com/openai/codex), [Gemini CLI](https://github.com/google-gemini/gemini-cli) |
 | **Browser** | Playwright Chromium + Xvfb + CDP on :9222, optional noVNC |
 | **Terminal** | ttyd on :7681, tmux, zsh |
 | **Node.js** | nvm with Node 24 + 22, pnpm, Bun, TypeScript |
