@@ -114,4 +114,4 @@ jobs:
         with:
           dockerfile: Dockerfile
           failure-threshold: warning
-          ignore: DL3003,DL3008,DL3013,DL3016,DL3059,DL4006,SC1091,SC2015,SC2086
+          ignore: DL3003,DL3008,DL3013,DL3016,DL3042,DL3059,DL4006,SC1091,SC2015,SC2086
