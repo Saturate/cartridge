@@ -146,11 +146,36 @@ spec:
             - name: SKILLS_INIT
               value: "true"
             {{- end }}
+            {{- if .Values.api.token }}
+            - name: CARTRIDGE_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cartridge.fullname" . }}-secrets
+                  key: api-token
+            {{- end }}
+            {{- if .Values.api.safeMode }}
+            - name: CARTRIDGE_API_SAFE_MODE
+              value: "true"
+            {{- end }}
+            {{- if not .Values.api.hooks }}
+            - name: CARTRIDGE_HOOKS
+              value: "false"
+            {{- end }}
+            - name: CARTRIDGE_API_MAX_CONCURRENT
+              value: {{ .Values.api.maxConcurrent | quote }}
+            - name: CARTRIDGE_API_MAX_AGENTS
+              value: {{ .Values.api.maxAgents | quote }}
+            - name: CARTRIDGE_API_BUFFER_SIZE
+              value: {{ .Values.api.bufferSize | quote }}
+            - name: CARTRIDGE_API_RETAIN_SECONDS
+              value: {{ .Values.api.retainSeconds | quote }}
           ports:
             - name: ttyd
               containerPort: 7681
             - name: cdp
               containerPort: 9222
+            - name: api
+              containerPort: 4500
             {{- if .Values.novnc }}
             - name: novnc
               containerPort: 6080
@@ -182,11 +207,17 @@ spec:
             {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: api
+            initialDelaySeconds: 5
+            periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /
-              port: ttyd
-            initialDelaySeconds: 10
+              path: /api/health
+              port: api
+            initialDelaySeconds: 3
             periodSeconds: 5
 
         {{- if .Values.husk.enabled }}

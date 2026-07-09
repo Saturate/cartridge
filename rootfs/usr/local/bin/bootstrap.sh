@@ -231,6 +231,54 @@ if [ "${PK_MODE:-}" = "true" ]; then
   fi
 fi
 
+# ── API hook plugin installation ─────────────────────────────────
+PLUGIN_SRC="/etc/cartridge/plugins"
+
+if [ -d "$PLUGIN_SRC" ]; then
+  # Claude Code
+  CLAUDE_PLUGIN_DIR="$HOME_DIR/.claude/plugins"
+  mkdir -p "$CLAUDE_PLUGIN_DIR"
+  if [ ! -e "$CLAUDE_PLUGIN_DIR/cartridge-api" ]; then
+    ln -sf "$PLUGIN_SRC/claude/cartridge-api" "$CLAUDE_PLUGIN_DIR/cartridge-api"
+    log "api: linked Claude Code hook plugin"
+  fi
+
+  # Pi
+  PI_EXT_DIR="$HOME_DIR/.pi/agent/extensions"
+  mkdir -p "$PI_EXT_DIR"
+  if [ ! -e "$PI_EXT_DIR/cartridge-hook.ts" ]; then
+    ln -sf "$PLUGIN_SRC/pi/cartridge-hook.ts" "$PI_EXT_DIR/cartridge-hook.ts"
+    log "api: linked Pi extension"
+  fi
+
+  # OpenCode
+  OC_PLUGIN_DIR="$HOME_DIR/.config/opencode/plugins"
+  mkdir -p "$OC_PLUGIN_DIR"
+  if [ ! -e "$OC_PLUGIN_DIR/cartridge-hook.js" ]; then
+    ln -sf "$PLUGIN_SRC/opencode/cartridge-hook.js" "$OC_PLUGIN_DIR/cartridge-hook.js"
+    log "api: linked OpenCode plugin"
+  fi
+
+  # Safe mode
+  if [ "${CARTRIDGE_API_SAFE_MODE:-}" = "true" ]; then
+    rm -f "$HOME_DIR/.claude/settings.local.json"
+    log "api: safe mode enabled, removed bypassPermissions override"
+  else
+    if [ ! -f "$HOME_DIR/.claude/settings.local.json" ]; then
+      cp "$PLUGIN_SRC/claude/settings.local.json" "$HOME_DIR/.claude/settings.local.json"
+      log "api: set bypassPermissions default"
+    fi
+  fi
+
+  # Hook opt-out
+  if [ "${CARTRIDGE_HOOKS:-true}" = "false" ]; then
+    rm -f "$CLAUDE_PLUGIN_DIR/cartridge-api"
+    rm -f "$PI_EXT_DIR/cartridge-hook.ts"
+    rm -f "$OC_PLUGIN_DIR/cartridge-hook.js"
+    log "api: hooks disabled globally (removed symlinks)"
+  fi
+fi
+
 # Fix ownership
 chown -R dev:dev "$HOME_DIR"
 
