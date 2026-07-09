@@ -1,6 +1,7 @@
 pub mod agents;
 pub mod auth;
 pub mod logs;
+pub mod messages;
 pub mod run;
 pub mod status;
 pub mod ws;
@@ -46,6 +47,7 @@ pub async fn run(config: Config, log_buffer: logs::LogBuffer) {
         .route("/api/agents/{id}/resize", post(agents::resize_agent))
         .route("/api/agents/{id}/stop", post(agents::stop_agent))
         .route("/api/agents/{id}/ws", get(ws::ws_upgrade))
+        .route("/api/agents/{id}/messages", post(messages::send_message).get(messages::list_messages))
         .with_state(registry.clone())
         .route("/api/run", post(run::handle_run))
         .with_state(config_arc)
@@ -397,6 +399,59 @@ fn openapi_spec() -> serde_json::Value {
                         } } },
                         "409": { "description": "Agent already exited" }
                     }
+                }
+            },
+            "/api/agents/{id}/messages": {
+                "post": {
+                    "summary": "Send message to agent",
+                    "description": "Send a structured message to an agent. The message is stored in the agent's inbox and injected into the PTY as formatted input. Use for inter-agent communication: one agent can message another through the API.",
+                    "tags": ["Agents"],
+                    "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "example": "ag_31595180e58c" }],
+                    "requestBody": { "required": true, "content": { "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "required": ["from", "content"],
+                            "properties": {
+                                "from": { "type": "string", "description": "Sender agent ID or identifier" },
+                                "content": { "type": "string", "description": "Message content" },
+                                "msg_type": { "type": "string", "enum": ["request", "response", "info"], "default": "request", "description": "Message type" }
+                            }
+                        },
+                        "examples": {
+                            "agent-to-agent": {
+                                "summary": "Agent A asks Agent B",
+                                "value": { "from": "ag_abc123", "content": "can you also check the auth module?", "msg_type": "request" }
+                            },
+                            "response": {
+                                "summary": "Agent B replies to Agent A",
+                                "value": { "from": "ag_def456", "content": "auth module looks fine, no issues found", "msg_type": "response" }
+                            },
+                            "orchestrator": {
+                                "summary": "Orchestrator steers agent",
+                                "value": { "from": "barracks", "content": "priority changed: focus on the payment module instead", "msg_type": "info" }
+                            }
+                        }
+                    } } },
+                    "responses": {
+                        "201": { "description": "Message sent", "content": { "application/json": {
+                            "example": { "id": "msg_a1b2c3d4e5f6", "delivered": true }
+                        } } },
+                        "404": { "description": "Agent not found" }
+                    }
+                },
+                "get": {
+                    "summary": "List agent messages",
+                    "description": "Get all messages sent to this agent. Includes delivery status.",
+                    "tags": ["Agents"],
+                    "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+                    "responses": { "200": { "description": "Message list", "content": { "application/json": {
+                        "example": {
+                            "messages": [
+                                { "id": "msg_a1b2c3d4e5f6", "from": "ag_abc123", "to": "ag_def456", "content": "check the auth module", "msg_type": "request", "delivered": true, "timestamp": "1783602170.404" }
+                            ],
+                            "total": 1
+                        }
+                    } } } }
                 }
             },
             "/api/agents/{id}/ws": {

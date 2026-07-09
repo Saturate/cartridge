@@ -56,6 +56,8 @@ WebSocket connections pass the token as a query param: `ws://host:4500/api/agent
 | POST | `/api/agents/:id/input` | Send keystrokes to agent PTY |
 | POST | `/api/agents/:id/resize` | Resize agent PTY |
 | POST | `/api/agents/:id/stop` | Stop an agent |
+| POST | `/api/agents/:id/messages` | Send message to agent (inter-agent communication) |
+| GET | `/api/agents/:id/messages` | List agent's message history |
 | GET | `/api/agents/:id/ws` | WebSocket (terminal + events + status) |
 
 ## Starting agents
@@ -110,6 +112,32 @@ By default, all agents run with auto-approve (the container is the sandbox). Ove
 | Per-agent | `"options": {"permissionMode": "plan"}` (Claude) or `"options": {"approve": false}` (Pi) | This agent requires confirmation |
 
 When an agent pauses at a prompt, send input via `POST /api/agents/:id/input` or the WebSocket `input` frame.
+
+## Inter-agent messaging
+
+Agents can communicate with each other through the API. Messages are stored in the recipient's inbox and injected into their PTY as formatted input.
+
+```bash
+# Agent B sends a question to Agent A
+curl -X POST http://localhost:4500/api/agents/$AGENT_A/messages \
+  -H "Content-Type: application/json" \
+  -d '{"from":"'$AGENT_B'","content":"can you check the auth module?"}'
+
+# Agent A sees in their terminal:
+# [message from ag_xyz: can you check the auth module?]
+
+# Agent A responds
+curl -X POST http://localhost:4500/api/agents/$AGENT_B/messages \
+  -H "Content-Type: application/json" \
+  -d '{"from":"'$AGENT_A'","content":"auth module looks fine","msg_type":"response"}'
+
+# View message history
+curl http://localhost:4500/api/agents/$AGENT_A/messages
+```
+
+Message types: `request` (default), `response`, `info`. The `from` field can be an agent ID or any identifier (e.g., `barracks` for orchestrator messages).
+
+Since agents have `CARTRIDGE_API_URL` in their environment, they can send messages to other agents directly through the API without orchestrator involvement.
 
 ## WebSocket
 
