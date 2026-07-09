@@ -133,7 +133,7 @@ if [ -n "${OLLAMA_HOST:-}" ]; then
       done
     else
       # Try to discover models from the Ollama server
-      discovered=$(curl -sf "${OLLAMA_HOST}/api/tags" 2>/dev/null \
+      discovered=$(curl -sf --connect-timeout 5 --max-time 10 "${OLLAMA_HOST}/api/tags" 2>/dev/null \
         | python3 -c "
 import sys,json
 try:
@@ -236,13 +236,7 @@ if [ -d "$PLUGIN_SRC" ]; then
     log "api: linked Claude Code hook plugin"
   fi
 
-  # Pi
-  PI_EXT_DIR="$HOME_DIR/.pi/agent/extensions"
-  mkdir -p "$PI_EXT_DIR"
-  if [ ! -e "$PI_EXT_DIR/cartridge-hook.ts" ]; then
-    ln -sf "$PLUGIN_SRC/pi/cartridge-hook.ts" "$PI_EXT_DIR/cartridge-hook.ts"
-    log "api: linked Pi extension"
-  fi
+  # Pi: hooks via --no-extensions + JSON output parsing, no extension needed
 
   # OpenCode
   OC_PLUGIN_DIR="$HOME_DIR/.config/opencode/plugins"
@@ -266,7 +260,6 @@ if [ -d "$PLUGIN_SRC" ]; then
   # Hook opt-out
   if [ "${CARTRIDGE_HOOKS:-true}" = "false" ]; then
     rm -f "$CLAUDE_PLUGIN_DIR/cartridge-api"
-    rm -f "$PI_EXT_DIR/cartridge-hook.ts"
     rm -f "$OC_PLUGIN_DIR/cartridge-hook.js"
     log "api: hooks disabled globally (removed symlinks)"
   fi

@@ -4,6 +4,7 @@ pub mod logs;
 pub mod messages;
 pub mod run;
 pub mod status;
+pub mod terminal;
 pub mod ws;
 
 use std::sync::Arc;
@@ -47,6 +48,7 @@ pub async fn run(config: Config, log_buffer: logs::LogBuffer) {
         .route("/api/agents/{id}/resize", post(agents::resize_agent))
         .route("/api/agents/{id}/stop", post(agents::stop_agent))
         .route("/api/agents/{id}/ws", get(ws::ws_upgrade))
+        .route("/api/agents/{id}/terminal", get(terminal::terminal_page))
         .route("/api/agents/{id}/messages", post(messages::send_message).get(messages::list_messages))
         .with_state(registry.clone())
         .route("/api/run", post(run::handle_run))
@@ -73,9 +75,13 @@ pub async fn run(config: Config, log_buffer: logs::LogBuffer) {
         app
     };
 
-    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}"))
-        .await
-        .expect("failed to bind");
+    // Bind dual-stack (IPv6 + IPv4) so Firefox doesn't stall on ::1 fallback
+    let listener = match tokio::net::TcpListener::bind(format!("[::]:{port}")).await {
+        Ok(l) => l,
+        Err(_) => tokio::net::TcpListener::bind(format!("0.0.0.0:{port}"))
+            .await
+            .expect("failed to bind"),
+    };
 
     tracing::info!(port, "cartridge-api listening");
 
