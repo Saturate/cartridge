@@ -236,7 +236,13 @@ if [ -d "$PLUGIN_SRC" ]; then
     log "api: linked Claude Code hook plugin"
   fi
 
-  # Pi: hooks via --no-extensions + JSON output parsing, no extension needed
+  # Pi
+  PI_EXT_DIR="$HOME_DIR/.pi/agent/extensions"
+  mkdir -p "$PI_EXT_DIR"
+  if [ ! -e "$PI_EXT_DIR/cartridge-hook.ts" ]; then
+    ln -sf "$PLUGIN_SRC/pi/cartridge-hook.ts" "$PI_EXT_DIR/cartridge-hook.ts"
+    log "api: linked Pi extension"
+  fi
 
   # OpenCode
   OC_PLUGIN_DIR="$HOME_DIR/.config/opencode/plugins"
@@ -260,6 +266,7 @@ if [ -d "$PLUGIN_SRC" ]; then
   # Hook opt-out
   if [ "${CARTRIDGE_HOOKS:-true}" = "false" ]; then
     rm -f "$CLAUDE_PLUGIN_DIR/cartridge-api"
+    rm -f "$PI_EXT_DIR/cartridge-hook.ts"
     rm -f "$OC_PLUGIN_DIR/cartridge-hook.js"
     log "api: hooks disabled globally (removed symlinks)"
   fi

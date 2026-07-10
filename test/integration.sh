@@ -523,7 +523,9 @@ test_api_hooks_installed() {
   assert "claude hook plugin linked" \
     "$(exec_dev "$c" 'test -L ~/.claude/plugins/cartridge-api && test -f ~/.claude/plugins/cartridge-api/hooks/hooks.json && echo yes')"
 
-  # Pi: no extension (uses --no-extensions + JSON output parsing)
+  # Pi extension (symlink to /etc/cartridge/plugins/pi/cartridge-hook.ts)
+  assert "pi extension linked" \
+    "$(exec_dev "$c" 'test -L ~/.pi/agent/extensions/cartridge-hook.ts && echo yes')"
 
   # OpenCode plugin (symlink to /etc/cartridge/plugins/opencode/cartridge-hook.js)
   assert "opencode plugin linked" \
@@ -559,6 +561,8 @@ test_api_hooks_disabled() {
   # Symlinks should be removed (not renamed to .disabled)
   assert "claude plugin removed" \
     "$(exec_dev "$c" 'test ! -e ~/.claude/plugins/cartridge-api && echo yes')"
+  assert "pi extension removed" \
+    "$(exec_dev "$c" 'test ! -e ~/.pi/agent/extensions/cartridge-hook.ts && echo yes')"
   assert "opencode plugin removed" \
     "$(exec_dev "$c" 'test ! -e ~/.config/opencode/plugins/cartridge-hook.js && echo yes')"
 

@@ -1,20 +1,28 @@
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { execSync } from "child_process";
 
-export default {
-  tool_call: (event: any) => {
-    try {
-      execSync("cartridge-api hook pi-tool-call", {
-        input: JSON.stringify(event),
-        timeout: 5000,
-      });
-    } catch {}
-  },
-  tool_result: (event: any) => {
-    try {
-      execSync("cartridge-api hook pi-tool-result", {
-        input: JSON.stringify(event),
-        timeout: 5000,
-      });
-    } catch {}
-  },
-};
+function send(event: string, data: any) {
+  try {
+    execSync(`cartridge-api hook ${event}`, {
+      input: JSON.stringify(data),
+      timeout: 2000,
+      stdio: ["pipe", "ignore", "ignore"],
+    });
+  } catch {}
+}
+
+export default function (pi: ExtensionAPI) {
+  pi.on("tool_call", async (event) => {
+    send("pi-tool-call", {
+      tool: event.toolName,
+      input: event.input,
+    });
+  });
+
+  pi.on("tool_result", async (event) => {
+    send("pi-tool-result", {
+      tool: event.toolName,
+      output: event.output,
+    });
+  });
+}

@@ -119,7 +119,7 @@ fn build_pi(opts: &ProviderOptions, safe_mode: bool) -> Vec<String> {
     if opts.no_skills.unwrap_or(false) {
         cmd.push("--no-skills".into());
     }
-    if opts.no_extensions.unwrap_or(true) {
+    if opts.no_extensions.unwrap_or(false) {
         cmd.push("--no-extensions".into());
     }
 
