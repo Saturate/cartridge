@@ -47,8 +47,8 @@ jobs:
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
-          name: cartridge-api-${{ matrix.arch }}
-          path: api/target/${{ matrix.target }}/release/cartridge-api
+          name: cartridge-${{ matrix.arch }}
+          path: api/target/${{ matrix.target }}/release/cartridge
 
   build-image:
     needs: build-api
@@ -59,11 +59,11 @@ jobs:
       - name: Download API binary
         uses: actions/download-artifact@v4
         with:
-          name: cartridge-api-amd64
+          name: cartridge-amd64
           path: api/bin/linux-amd64/
 
       - name: Make binary executable
-        run: chmod +x api/bin/linux-amd64/cartridge-api
+        run: chmod +x api/bin/linux-amd64/cartridge
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

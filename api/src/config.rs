@@ -41,7 +41,7 @@ impl Config {
             log_level: env::var("CARTRIDGE_API_LOG_LEVEL").unwrap_or_else(|_| "info".into()),
             hooks_enabled: parse_env_bool("CARTRIDGE_HOOKS", true),
             socket_path: env::var("CARTRIDGE_API_SOCKET")
-                .unwrap_or_else(|_| "/tmp/cartridge-api.sock".into()),
+                .unwrap_or_else(|_| "/tmp/cartridge.sock".into()),
         }
     }
 }

@@ -2,7 +2,7 @@ const { execSync } = require("child_process");
 
 function send(event, data) {
   try {
-    execSync(`cartridge-api hook ${event}`, {
+    execSync(`cartridge hook ${event}`, {
       input: JSON.stringify(data),
       timeout: 2000,
       stdio: ["pipe", "ignore", "ignore"],

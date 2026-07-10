@@ -231,8 +231,8 @@ if [ -d "$PLUGIN_SRC" ]; then
   # Claude Code
   CLAUDE_PLUGIN_DIR="$HOME_DIR/.claude/plugins"
   mkdir -p "$CLAUDE_PLUGIN_DIR"
-  if [ ! -e "$CLAUDE_PLUGIN_DIR/cartridge-api" ]; then
-    ln -sf "$PLUGIN_SRC/claude/cartridge-api" "$CLAUDE_PLUGIN_DIR/cartridge-api"
+  if [ ! -e "$CLAUDE_PLUGIN_DIR/cartridge" ]; then
+    ln -sf "$PLUGIN_SRC/claude/cartridge" "$CLAUDE_PLUGIN_DIR/cartridge"
     log "api: linked Claude Code hook plugin"
   fi
 
@@ -265,7 +265,7 @@ if [ -d "$PLUGIN_SRC" ]; then
 
   # Hook opt-out
   if [ "${CARTRIDGE_HOOKS:-true}" = "false" ]; then
-    rm -f "$CLAUDE_PLUGIN_DIR/cartridge-api"
+    rm -f "$CLAUDE_PLUGIN_DIR/cartridge"
     rm -f "$PI_EXT_DIR/cartridge-hook.ts"
     rm -f "$OC_PLUGIN_DIR/cartridge-hook.js"
     log "api: hooks disabled globally (removed symlinks)"

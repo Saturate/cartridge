@@ -1,4 +1,4 @@
 #!/command/with-contenv bash
 export HOME=/home/dev
 exec /command/s6-setuidgid dev \
-  /usr/local/bin/cartridge-api serve
+  /usr/local/bin/cartridge serve

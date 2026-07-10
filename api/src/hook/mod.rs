@@ -6,7 +6,7 @@ use std::io::Read;
 pub fn run(event: &str) {
     let agent_id = std::env::var("CARTRIDGE_AGENT_ID").unwrap_or_default();
     let socket_path = std::env::var("CARTRIDGE_API_SOCKET")
-        .unwrap_or_else(|_| "/tmp/cartridge-api.sock".into());
+        .unwrap_or_else(|_| "/tmp/cartridge.sock".into());
 
     let mut payload = String::new();
     std::io::stdin().read_to_string(&mut payload).ok();
@@ -19,7 +19,7 @@ pub fn run(event: &str) {
 
     let msg = serde_json::to_vec(&envelope).unwrap_or_default();
     if let Err(e) = socket::send(&socket_path, &msg) {
-        eprintln!("cartridge-api hook: {e}");
+        eprintln!("cartridge hook: {e}");
         std::process::exit(1);
     }
 }

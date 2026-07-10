@@ -204,7 +204,7 @@ CLI hooks are pre-installed as plugins in the container image. They send structu
 
 | Provider | Hook mechanism | Installed at |
 |----------|---------------|--------------|
-| Claude Code | Plugin with `hooks.json` | `~/.claude/plugins/cartridge-api` (symlink) |
+| Claude Code | Plugin with `hooks.json` | `~/.claude/plugins/cartridge` (symlink) |
 | Pi | TypeScript extension | `~/.pi/agent/extensions/cartridge-hook.ts` (symlink) |
 | OpenCode | JS plugin | `~/.config/opencode/plugins/cartridge-hook.js` (symlink) |
 | Codex, Gemini | Tier 1 only (lifecycle events) | N/A |
@@ -235,9 +235,9 @@ Disable hooks globally with `CARTRIDGE_HOOKS=false` or per-agent with `"hooks": 
 
 | Path | Purpose |
 |------|---------|
-| `/tmp/cartridge-api.sock` | Unix socket for hook events |
+| `/tmp/cartridge.sock` | Unix socket for hook events |
 | `/etc/cartridge/plugins/` | Read-only plugin sources (image layer) |
-| `~/.claude/plugins/cartridge-api` | Claude Code hook plugin (symlink) |
+| `~/.claude/plugins/cartridge` | Claude Code hook plugin (symlink) |
 | `~/.claude/settings.local.json` | bypassPermissions default (copied on first boot) |
 | `~/.pi/agent/extensions/cartridge-hook.ts` | Pi extension (symlink) |
 | `~/.config/opencode/plugins/cartridge-hook.js` | OpenCode plugin (symlink) |
@@ -270,13 +270,13 @@ All errors return a consistent format:
 
 ## Architecture
 
-The API is a single Rust binary (`cartridge-api`) with four modes:
+The API is a single Rust binary (`cartridge`) with four modes:
 
 ```
-cartridge-api serve    # HTTP/WS server (s6 service)
-cartridge-api hook     # Forward hook event via Unix socket
-cartridge-api status   # Print container status as JSON
-cartridge-api health   # Exit 0 if server running, 1 otherwise
+cartridge serve    # HTTP/WS server (s6 service)
+cartridge hook     # Forward hook event via Unix socket
+cartridge status   # Print container status as JSON
+cartridge health   # Exit 0 if server running, 1 otherwise
 ```
 
 Agents are spawned in real PTYs via `portable-pty`. The full CLI TUI renders normally. Output is captured to a per-agent ring buffer and broadcast to WebSocket subscribers. Hook events arrive via a Unix socket from baked-in CLI plugins.

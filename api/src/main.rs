@@ -8,7 +8,7 @@ use config::Config;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 #[derive(Parser)]
-#[command(name = "cartridge-api", about = "Cartridge container API")]
+#[command(name = "cartridge", about = "Cartridge container API")]
 struct Cli {
     #[command(subcommand)]
     command: Command,

@@ -61,8 +61,8 @@ jobs:
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
-          name: cartridge-api-${{ matrix.arch }}
-          path: api/target/${{ matrix.target }}/release/cartridge-api
+          name: cartridge-${{ matrix.arch }}
+          path: api/target/${{ matrix.target }}/release/cartridge
 
   edge:
     needs: build-api
@@ -73,17 +73,17 @@ jobs:
       - name: Download amd64 binary
         uses: actions/download-artifact@v4
         with:
-          name: cartridge-api-amd64
+          name: cartridge-amd64
           path: api/bin/linux-amd64/
 
       - name: Download arm64 binary
         uses: actions/download-artifact@v4
         with:
-          name: cartridge-api-arm64
+          name: cartridge-arm64
           path: api/bin/linux-arm64/
 
       - name: Make binaries executable
-        run: chmod +x api/bin/linux-*/cartridge-api
+        run: chmod +x api/bin/linux-*/cartridge
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3

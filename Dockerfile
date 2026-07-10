@@ -4,7 +4,7 @@
 
 # ── Build stage: Rust API ────────────────────────────────────────
 # For local builds: compiles from source (single-platform).
-# For CI: place pre-built binaries at api/bin/linux-<arch>/cartridge-api
+# For CI: place pre-built binaries at api/bin/linux-<arch>/cartridge
 #         and set CARTRIDGE_API_PREBUILT=1 to skip compilation.
 FROM rust:1-bookworm AS api-builder
 
@@ -14,9 +14,9 @@ ARG CARTRIDGE_API_PREBUILT
 COPY api/ /build/
 WORKDIR /build
 
-RUN if [ "$CARTRIDGE_API_PREBUILT" = "1" ] && [ -f "bin/linux-${TARGETARCH}/cartridge-api" ]; then \
+RUN if [ "$CARTRIDGE_API_PREBUILT" = "1" ] && [ -f "bin/linux-${TARGETARCH}/cartridge" ]; then \
       echo "using pre-built binary for ${TARGETARCH}"; \
-      cp "bin/linux-${TARGETARCH}/cartridge-api" /build/cartridge-api; \
+      cp "bin/linux-${TARGETARCH}/cartridge" /build/cartridge; \
     else \
       apt-get update && apt-get install -y --no-install-recommends musl-tools \
       && rm -rf /var/lib/apt/lists/* \
@@ -26,7 +26,7 @@ RUN if [ "$CARTRIDGE_API_PREBUILT" = "1" ] && [ -f "bin/linux-${TARGETARCH}/cart
          esac \
       && rustup target add "$RUST_TARGET" \
       && cargo build --release --target "$RUST_TARGET" \
-      && cp "target/$RUST_TARGET/release/cartridge-api" /build/cartridge-api; \
+      && cp "target/$RUST_TARGET/release/cartridge" /build/cartridge; \
     fi
 
 # ── Main image ───────────────────────────────────────────────────
@@ -198,14 +198,14 @@ RUN . "$NVM_DIR/nvm.sh" && npx -y playwright install chromium \
 RUN pip3 install --break-system-packages httpx
 
 # ── Cartridge API (Rust binary) ──────────────────────────────────
-COPY --from=api-builder /build/cartridge-api /usr/local/bin/cartridge-api
+COPY --from=api-builder /build/cartridge /usr/local/bin/cartridge
 
 # ── rootfs overlay (s6 services, entrypoint, bootstrap) ─────────
 COPY rootfs/ /
 
 RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/bootstrap.sh \
        /usr/local/bin/cartridge-status /usr/local/bin/cartridge-config \
-       /usr/local/bin/cartridge-notify /usr/local/bin/cartridge-api \
+       /usr/local/bin/cartridge-notify /usr/local/bin/cartridge \
     && find /etc/s6-overlay -name "run" -exec chmod +x {} \;
 
 WORKDIR /workspace

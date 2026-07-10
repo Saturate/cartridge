@@ -93,7 +93,7 @@ pub async fn run(config: Config, log_buffer: logs::LogBuffer) {
             .expect("failed to bind"),
     };
 
-    tracing::info!(port, "cartridge-api listening");
+    tracing::info!(port, "cartridge listening");
 
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
@@ -191,7 +191,7 @@ fn openapi_spec() -> serde_json::Value {
                     "responses": { "200": { "description": "Log entries", "content": { "application/json": {
                         "example": {
                             "entries": [
-                                { "ts": "1783600170.404", "level": "info", "msg": "cartridge-api listening", "fields": { "port": 4500 } },
+                                { "ts": "1783600170.404", "level": "info", "msg": "cartridge listening", "fields": { "port": 4500 } },
                                 { "ts": "1783600186.794", "level": "info", "msg": "agent exited", "fields": { "agent_id": "ag_4a8119bac41f", "exit_code": "Some(0)" } }
                             ],
                             "total": 2,

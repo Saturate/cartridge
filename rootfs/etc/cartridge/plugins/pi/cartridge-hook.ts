@@ -3,7 +3,7 @@ import { execSync } from "child_process";
 
 function send(event: string, data: any) {
   try {
-    execSync(`cartridge-api hook ${event}`, {
+    execSync(`cartridge hook ${event}`, {
       input: JSON.stringify(data),
       timeout: 2000,
       stdio: ["pipe", "ignore", "ignore"],
