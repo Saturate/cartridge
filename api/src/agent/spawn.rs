@@ -49,6 +49,7 @@ pub struct SpawnRequest {
     pub env: HashMap<String, String>,
     pub cwd: PathBuf,
     pub timeout_secs: Option<u64>,
+    pub idle_timeout_secs: Option<u64>,
     pub hooks: bool,
 }
 
@@ -135,6 +136,8 @@ pub fn spawn_agent(
         pty_cmd_tx: Some(pty_cmd_tx),
         hooks_enabled: req.hooks,
         timeout_secs: req.timeout_secs,
+        idle_timeout_secs: req.idle_timeout_secs,
+        last_activity: Instant::now(),
         cwd: req.cwd,
         env: req.env,
     };
@@ -219,8 +222,8 @@ pub fn start_child_waiter(
         let mut state = agent.write().await;
         let duration_ms = state.duration_ms();
 
-        // Don't overwrite Stopped (set by the stop handler before the child exits)
-        if state.status != AgentStatus::Stopped {
+        // Don't overwrite Stopped or Timeout (set before the kill signal)
+        if !matches!(state.status, AgentStatus::Stopped | AgentStatus::Timeout) {
             state.status = status;
         }
         state.exit_code = code;
@@ -295,6 +298,7 @@ pub fn start_output_pump(
         while let Some(data) = output_rx.recv().await {
             let mut state = agent.write().await;
             state.ring_buffer.append(&data);
+            state.touch_activity();
             let _ = state.broadcast_tx.send(BroadcastMessage::Terminal(data));
         }
     });

@@ -59,6 +59,7 @@ WebSocket connections pass the token as a query param: `ws://host:4500/api/agent
 | POST | `/api/agents/:id/messages` | Send message to agent (inter-agent communication) |
 | GET | `/api/agents/:id/messages` | List agent's message history |
 | GET | `/api/agents/:id/ws` | WebSocket (terminal + events + status) |
+| GET | `/api/agents/:id/terminal` | Browser terminal (xterm.js) |
 
 ## Starting agents
 
@@ -96,11 +97,11 @@ Each provider maps `options` to CLI flags:
 
 **Pi:** `model`, `approve`, `mode`, `tools`, `excludeTools`, `noSession`, `noSkills`, `noExtensions`
 
-**OpenCode:** `autoApprove`, `quiet`
+**OpenCode:** `model` (auto-approve via `opencode.jsonc` config, not a CLI flag)
 
-**Codex:** `model`, `fullAuto`
+**Codex:** `model`, `fullAuto` (uses `codex exec --dangerously-bypass-approvals-and-sandbox`)
 
-**Gemini:** `model`, `autoApprove`
+**Gemini:** `model`, `autoApprove` (uses `--yolo` flag)
 
 ### Permissions
 
@@ -138,6 +139,26 @@ curl http://localhost:4500/api/agents/$AGENT_A/messages
 Message types: `request` (default), `response`, `info`. The `from` field can be an agent ID or any identifier (e.g., `barracks` for orchestrator messages).
 
 Since agents have `CARTRIDGE_API_URL` in their environment, they can send messages to other agents directly through the API without orchestrator involvement.
+
+## Idle timeout
+
+Interactive agents stay alive between prompts. To prevent forgotten agents from consuming resources, set an idle timeout:
+
+```json
+{"provider": "claude", "prompt": "fix tests", "idle_timeout": 300}
+```
+
+Default: 300 seconds (5 minutes). Set to 0 to disable. The agent is killed when no PTY output is produced for the idle period. Configurable globally via `CARTRIDGE_API_IDLE_TIMEOUT`.
+
+## Browser terminal
+
+Open `/api/agents/:id/terminal` in a browser for a full interactive terminal. Uses xterm.js with Unicode 11 support (correct rendering for Claude Code's TUI), clickable links, and auto-reconnect.
+
+```
+http://localhost:4500/api/agents/ag_abc123/terminal
+```
+
+Pass `?token=your-secret` if auth is enabled.
 
 ## WebSocket
 
@@ -201,6 +222,7 @@ Disable hooks globally with `CARTRIDGE_HOOKS=false` or per-agent with `"hooks": 
 | `CARTRIDGE_API_MAX_AGENTS` | `100` | Max agents in registry |
 | `CARTRIDGE_API_MAX_CONCURRENT` | `10` | Max simultaneously running agents |
 | `CARTRIDGE_API_MAX_TIMEOUT` | `7200` | Max agent timeout (seconds) |
+| `CARTRIDGE_API_IDLE_TIMEOUT` | `300` | Default idle timeout per agent (seconds). 0 = disabled. |
 | `CARTRIDGE_API_RETAIN_SECONDS` | `3600` | Keep completed agents for (seconds) |
 | `CARTRIDGE_API_EXEC_TIMEOUT` | `30` | Default `/api/run` timeout |
 | `CARTRIDGE_API_EXEC_MAX_TIMEOUT` | `300` | Max `/api/run` timeout |

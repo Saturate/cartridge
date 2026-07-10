@@ -27,6 +27,8 @@ pub struct CreateAgentRequest {
     pub cwd: String,
     #[serde(default = "default_timeout")]
     pub timeout: u64,
+    #[serde(default = "default_idle_timeout")]
+    pub idle_timeout: u64,
     #[serde(default = "default_hooks")]
     pub hooks: bool,
     #[serde(default)]
@@ -35,6 +37,7 @@ pub struct CreateAgentRequest {
 
 fn default_cwd() -> String { "/workspace".into() }
 fn default_timeout() -> u64 { 3600 }
+fn default_idle_timeout() -> u64 { 300 }
 fn default_hooks() -> bool { true }
 
 #[derive(Serialize)]
@@ -206,6 +209,12 @@ pub async fn create_agent(
         Some(req.timeout.min(config.max_timeout))
     };
 
+    let idle_timeout_secs = if req.idle_timeout == 0 {
+        None
+    } else {
+        Some(req.idle_timeout)
+    };
+
     let spawn_req = SpawnRequest {
         provider,
         prompt: req.prompt,
@@ -214,6 +223,7 @@ pub async fn create_agent(
         env: req.env,
         cwd: PathBuf::from(&req.cwd),
         timeout_secs,
+        idle_timeout_secs,
         hooks: req.hooks && config.hooks_enabled,
     };
 

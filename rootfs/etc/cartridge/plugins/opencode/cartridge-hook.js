@@ -1,20 +1,28 @@
 const { execSync } = require("child_process");
 
-module.exports = {
-  onToolCall(event) {
-    try {
-      execSync("cartridge-api hook opencode-tool-call", {
-        input: JSON.stringify(event),
-        timeout: 5000,
+function send(event, data) {
+  try {
+    execSync(`cartridge-api hook ${event}`, {
+      input: JSON.stringify(data),
+      timeout: 2000,
+      stdio: ["pipe", "ignore", "ignore"],
+    });
+  } catch {}
+}
+
+module.exports = async ({ client, $ }) => {
+  return {
+    "tool.execute.before": async (input) => {
+      send("opencode-tool-call", {
+        tool: input.tool,
+        args: input.args,
       });
-    } catch {}
-  },
-  onToolResult(event) {
-    try {
-      execSync("cartridge-api hook opencode-tool-result", {
-        input: JSON.stringify(event),
-        timeout: 5000,
+    },
+    "tool.execute.after": async (input) => {
+      send("opencode-tool-result", {
+        tool: input.tool,
+        result: input.result,
       });
-    } catch {}
-  },
+    },
+  };
 };

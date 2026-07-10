@@ -38,7 +38,7 @@ impl Provider {
             Provider::Pi => build_pi(options, safe_mode),
             Provider::Opencode => build_opencode(options, safe_mode),
             Provider::Codex => build_codex(options, safe_mode),
-            Provider::Gemini => build_gemini(options),
+            Provider::Gemini => build_gemini(options, safe_mode),
             Provider::Custom => custom_command.unwrap_or(&[]).to_vec(),
         }
     }
@@ -126,23 +126,27 @@ fn build_pi(opts: &ProviderOptions, safe_mode: bool) -> Vec<String> {
     cmd
 }
 
-fn build_opencode(opts: &ProviderOptions, safe_mode: bool) -> Vec<String> {
+fn build_opencode(opts: &ProviderOptions, _safe_mode: bool) -> Vec<String> {
+    // OpenCode doesn't have a CLI auto-approve flag.
+    // Permission is controlled via opencode.jsonc config ("permission": "allow").
+    // The bootstrap writes this config when not in safe mode.
     let mut cmd = vec!["opencode".into()];
 
-    let approve = opts.auto_approve.unwrap_or(!safe_mode);
-    if approve {
-        cmd.push("--dangerously-skip-permissions".into());
+    if let Some(model) = &opts.model {
+        cmd.push("--model".into());
+        cmd.push(model.clone());
     }
 
     cmd
 }
 
 fn build_codex(opts: &ProviderOptions, safe_mode: bool) -> Vec<String> {
-    let mut cmd = vec!["codex".into()];
+    // codex exec is the headless subcommand (--full-auto is deprecated)
+    let mut cmd = vec!["codex".into(), "exec".into()];
 
-    let full_auto = opts.full_auto.unwrap_or(!safe_mode);
-    if full_auto {
-        cmd.push("--full-auto".into());
+    let bypass = opts.full_auto.unwrap_or(!safe_mode);
+    if bypass {
+        cmd.push("--dangerously-bypass-approvals-and-sandbox".into());
     }
 
     if let Some(model) = &opts.model {
@@ -153,8 +157,13 @@ fn build_codex(opts: &ProviderOptions, safe_mode: bool) -> Vec<String> {
     cmd
 }
 
-fn build_gemini(opts: &ProviderOptions) -> Vec<String> {
+fn build_gemini(opts: &ProviderOptions, safe_mode: bool) -> Vec<String> {
     let mut cmd = vec!["gemini".into()];
+
+    let yolo = opts.auto_approve.unwrap_or(!safe_mode);
+    if yolo {
+        cmd.push("--yolo".into());
+    }
 
     if let Some(model) = &opts.model {
         cmd.push("--model".into());
@@ -222,7 +231,7 @@ mod tests {
         let cmd = Provider::Pi.build_command(&ProviderOptions::default(), false, None);
         assert!(cmd.contains(&"--approve".to_string()));
         assert!(!cmd.contains(&"-p".to_string()));
-        assert!(cmd.contains(&"--no-extensions".to_string()));
+        assert!(!cmd.contains(&"--no-extensions".to_string()));
     }
 
     #[test]
@@ -233,15 +242,29 @@ mod tests {
     }
 
     #[test]
-    fn codex_full_auto() {
+    fn codex_bypass() {
         let cmd = Provider::Codex.build_command(&ProviderOptions::default(), false, None);
-        assert!(cmd.contains(&"--full-auto".to_string()));
+        assert!(cmd.contains(&"exec".to_string()));
+        assert!(cmd.contains(&"--dangerously-bypass-approvals-and-sandbox".to_string()));
     }
 
     #[test]
     fn codex_safe_mode() {
         let cmd = Provider::Codex.build_command(&ProviderOptions::default(), true, None);
-        assert!(!cmd.contains(&"--full-auto".to_string()));
+        assert!(cmd.contains(&"exec".to_string()));
+        assert!(!cmd.contains(&"--dangerously-bypass-approvals-and-sandbox".to_string()));
+    }
+
+    #[test]
+    fn gemini_yolo() {
+        let cmd = Provider::Gemini.build_command(&ProviderOptions::default(), false, None);
+        assert!(cmd.contains(&"--yolo".to_string()));
+    }
+
+    #[test]
+    fn gemini_safe_mode() {
+        let cmd = Provider::Gemini.build_command(&ProviderOptions::default(), true, None);
+        assert!(!cmd.contains(&"--yolo".to_string()));
     }
 
     #[test]

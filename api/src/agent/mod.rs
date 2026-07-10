@@ -93,6 +93,8 @@ pub struct AgentState {
     pub pty_cmd_tx: Option<mpsc::Sender<PtyCommand>>,
     pub hooks_enabled: bool,
     pub timeout_secs: Option<u64>,
+    pub idle_timeout_secs: Option<u64>,
+    pub last_activity: Instant,
     pub cwd: PathBuf,
     pub env: HashMap<String, String>,
 }
@@ -100,6 +102,18 @@ pub struct AgentState {
 impl AgentState {
     pub fn duration_ms(&self) -> u64 {
         self.created_at.elapsed().as_millis() as u64
+    }
+
+    pub fn touch_activity(&mut self) {
+        self.last_activity = Instant::now();
+    }
+
+    pub fn is_idle(&self) -> bool {
+        if let Some(idle_secs) = self.idle_timeout_secs {
+            self.last_activity.elapsed().as_secs() >= idle_secs
+        } else {
+            false
+        }
     }
 }
 
@@ -164,6 +178,20 @@ impl AgentRegistry {
         for agent in map.values() {
             let a = agent.read().await;
             if matches!(a.status, AgentStatus::Starting | AgentStatus::Running) {
+                if let Some(tx) = &a.pty_cmd_tx {
+                    tx.send(PtyCommand::Kill).await.ok();
+                }
+            }
+        }
+    }
+
+    pub async fn kill_idle_agents(&self) {
+        let map = self.inner.read().await;
+        for agent in map.values() {
+            let mut a = agent.write().await;
+            if matches!(a.status, AgentStatus::Starting | AgentStatus::Running) && a.is_idle() {
+                tracing::info!(agent_id = %a.id, idle_secs = ?a.idle_timeout_secs, "killing idle agent");
+                a.status = AgentStatus::Timeout;
                 if let Some(tx) = &a.pty_cmd_tx {
                     tx.send(PtyCommand::Kill).await.ok();
                 }

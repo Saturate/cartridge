@@ -30,6 +30,16 @@ pub async fn run(config: Config, log_buffer: logs::LogBuffer) {
 
     let registry = AgentRegistry::new(config.clone());
 
+    // Periodic idle check + eviction
+    let idle_registry = registry.clone();
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+            idle_registry.kill_idle_agents().await;
+            idle_registry.evict_expired().await;
+        }
+    });
+
     // Start Unix socket server for hook events
     let hook_registry = registry.clone();
     tokio::spawn(async move {
