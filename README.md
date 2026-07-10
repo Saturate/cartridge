@@ -17,11 +17,12 @@
 
 ## What's inside
 
-Four AI harnesses, a headless browser, a web terminal, and everything a coding agent needs to work autonomously.
+Four AI harnesses, a programmatic API, a headless browser, a web terminal, and everything a coding agent needs to work autonomously.
 
 | Category | Included |
 |----------|----------|
 | **AI Harnesses** | [Claude Code](https://github.com/anthropics/claude-code), [Pi](https://pi.dev), [OpenAI Codex](https://github.com/openai/codex), [Gemini CLI](https://github.com/google-gemini/gemini-cli) |
+| **API** | HTTP + WebSocket on :4500 with interactive docs, browser terminal, inter-agent messaging |
 | **Browser** | Playwright Chromium + Xvfb + CDP on :9222, optional noVNC |
 | **Terminal** | ttyd on :7681, tmux, zsh |
 | **Node.js** | nvm with Node 24 + 22, pnpm, Bun, TypeScript |
@@ -39,7 +40,21 @@ Four AI harnesses, a headless browser, a web terminal, and everything a coding a
 git clone https://github.com/Saturate/cartridge.git
 cd cartridge
 docker compose up -d
-# Open http://localhost:7681
+```
+
+Open http://localhost:7681 for the web terminal, or use the API:
+
+```bash
+# Start an agent
+curl -X POST http://localhost:4500/api/agents \
+  -H "Content-Type: application/json" \
+  -d '{"provider":"claude","prompt":"fix the failing test"}'
+
+# Open the browser terminal for that agent
+# http://localhost:4500/api/agents/<id>/terminal
+
+# Interactive API docs
+# http://localhost:4500/api/docs
 ```
 
 Run `cartridge-status` inside the container to see what's configured.
@@ -105,12 +120,31 @@ helm install dev helm/cartridge/ \
   --set tunnels.tailscale.authkey=tskey-auth-...
 ```
 
+## API
+
+Cartridge includes an HTTP/WebSocket API on port 4500 for programmatic agent management. Orchestrators, dashboards, or other agents can start sessions, stream output, send follow-up prompts, and receive structured hook events.
+
+| Feature | How |
+|---------|-----|
+| Start an agent | `POST /api/agents` |
+| Stream output | `GET /api/agents/:id/ws` (WebSocket) |
+| Send follow-up prompt | `POST /api/agents/:id/input` |
+| Watch in browser | `GET /api/agents/:id/terminal` (xterm.js) |
+| Agent-to-agent messaging | `POST /api/agents/:id/messages` |
+| One-shot command | `POST /api/run` |
+| Interactive docs | `GET /api/docs` (Scalar) |
+
+Agents run in interactive mode with full TUI. Subscription auth works (no API key required). Hook plugins for Claude Code, Pi, and OpenCode stream structured events alongside the terminal output.
+
+See **[docs/api.md](docs/api.md)** for the full reference.
+
 ## Ecosystem
 
 - **[Barracks](https://github.com/Saturate/barracks)** - Orchestrator that runs Cartridge pods
 
 ## Docs
 
+- **[API](docs/api.md)** - HTTP/WebSocket API reference
 - **[Configuration](docs/configuration.md)** - Full env var + TOML reference with examples
 - **[Tools](docs/tools.md)** - Everything installed in the image
 - **[cartridge.example.toml](cartridge.example.toml)** - Example config file
