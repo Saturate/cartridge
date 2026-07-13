@@ -5,7 +5,11 @@
 Initial release of Cartridge - AI dev harness container.
 
 - Four AI harnesses: Claude Code, Pi, OpenAI Codex, Gemini CLI
-- s6-overlay v3 with 8 managed services (xvfb, ttyd, chrome, state-sync, novnc, sshd, tailscale, cloudflared)
+- HTTP/WebSocket API for agent lifecycle management
+- CLI commands: spawn, list, show, stop, logs
+- Inter-agent messaging
+- Browser terminal viewer
+- s6-overlay v3 with managed services (xvfb, ttyd, chrome, state-sync, novnc, sshd, tailscale, cloudflared)
 - Provider auto-wiring via env vars or TOML config
 - nvm with Node 24 + 22, Bun, Python 3
 - CLI tools: rg, fd, bat, fzf, jq, gh, delta, scc, pandoc, imagemagick, ffmpeg, shoutrrr
