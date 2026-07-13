@@ -101,6 +101,8 @@ jobs:
       - name: Version packages
         if: steps.check.outputs.pending != '0'
         id: version
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           npm run version
           VERSION=$(node -p "require('./package.json').version")
