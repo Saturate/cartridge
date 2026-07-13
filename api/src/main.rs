@@ -1,4 +1,5 @@
 mod agent;
+mod cli;
 mod config;
 mod hook;
 mod serve;
@@ -27,6 +28,57 @@ enum Command {
     Status,
     /// Check if the API server is running (exit 0 = running, 1 = not)
     Health,
+    /// Spawn a new agent
+    Spawn {
+        /// Provider (claude, pi, opencode, codex, gemini, custom)
+        #[arg(short, long)]
+        provider: String,
+        /// Task prompt
+        prompt: String,
+        /// Model override
+        #[arg(short, long)]
+        model: Option<String>,
+        /// Max turns
+        #[arg(long)]
+        max_turns: Option<u32>,
+        /// Working directory
+        #[arg(long, default_value = "/workspace")]
+        cwd: String,
+        /// Timeout in seconds
+        #[arg(short, long, default_value = "3600")]
+        timeout: u64,
+        /// Disable hooks
+        #[arg(long)]
+        no_hooks: bool,
+    },
+    /// List agents
+    #[command(alias = "ls")]
+    List {
+        /// Filter by status (running, completed, failed, timeout, stopped)
+        #[arg(short, long)]
+        status: Option<String>,
+        /// Filter by provider
+        #[arg(short, long)]
+        provider: Option<String>,
+    },
+    /// Show agent details
+    Show {
+        /// Agent ID
+        id: String,
+    },
+    /// Stop a running agent
+    Stop {
+        /// Agent ID
+        id: String,
+        /// Grace period in seconds before SIGKILL
+        #[arg(short, long, default_value = "5")]
+        grace: u64,
+    },
+    /// Show agent PTY output
+    Logs {
+        /// Agent ID
+        id: String,
+    },
 }
 
 fn main() {
@@ -55,12 +107,48 @@ fn main() {
             let ok = hook::probe_socket(&config.socket_path);
             std::process::exit(if ok { 0 } else { 1 });
         }
+        Command::Spawn {
+            provider,
+            prompt,
+            model,
+            max_turns,
+            cwd,
+            timeout,
+            no_hooks,
+        } => {
+            let config = Config::from_env();
+            cli::spawn_agent(
+                &config,
+                &provider,
+                &prompt,
+                model.as_deref(),
+                max_turns,
+                &cwd,
+                timeout,
+                no_hooks,
+            );
+        }
+        Command::List { status, provider } => {
+            let config = Config::from_env();
+            cli::list_agents(&config, status.as_deref(), provider.as_deref());
+        }
+        Command::Show { id } => {
+            let config = Config::from_env();
+            cli::show_agent(&config, &id);
+        }
+        Command::Stop { id, grace } => {
+            let config = Config::from_env();
+            cli::stop_agent(&config, &id, grace);
+        }
+        Command::Logs { id } => {
+            let config = Config::from_env();
+            cli::agent_logs(&config, &id);
+        }
     }
 }
 
 fn init_tracing(level: &str, log_buffer: serve::logs::LogBuffer) {
-    let filter =
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(level));
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(level));
     let buffer_layer = serve::logs::BufferLayer::new(log_buffer);
 
     tracing_subscriber::registry()

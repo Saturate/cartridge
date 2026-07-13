@@ -20,6 +20,7 @@ nix = { version = "0.29", features = ["signal", "process"] }
 utoipa = { version = "5", features = ["axum_extras"] }
 utoipa-scalar = { version = "0.2", features = ["axum"] }
 futures-util = "0.3"
+ureq = { version = "3", features = ["json"] }
 
 [profile.release]
 opt-level = "z"
