@@ -89,8 +89,9 @@ See `cartridge.example.toml` for all options.
 
 | Harness | Method | How |
 |---------|--------|-----|
-| **Claude Code** | API key | `ANTHROPIC_API_KEY` env var |
-| | Subscription | `claude setup-token` or `claude auth login` in terminal |
+| **Claude Code** | API key | `ANTHROPIC_API_KEY` env var (onboarding auto-completed) |
+| | Setup token | `CLAUDE_CODE_OAUTH_TOKEN` env var ([generate once](docs/examples/claude-code.md#headless-k8s--ci), onboarding auto-completed) |
+| | OAuth login | `claude auth login` in terminal |
 | **Pi** | Ollama | `OLLAMA_HOST` env var (auto-discovers models on boot) |
 | | Any cloud provider | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `GEMINI_API_KEY` |
 | | Subscription | `/login` inside Pi (ChatGPT, Claude, GitHub Copilot) |

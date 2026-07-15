@@ -36,12 +36,24 @@ docker compose up -d
 
 ## Headless (K8s / CI)
 
+When `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` is set, Cartridge auto-completes Claude Code's first-run onboarding so there are no interactive prompts. Just set the credential and go.
+
+```yaml
+services:
+  cartridge:
+    build: .
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+```
+
+For subscription auth, generate a long-lived token once and pass it as an env var:
+
 ```bash
-# Generate a long-lived token once:
+# Generate a token (valid for 1 year):
 docker run --rm -it cartridge claude setup-token
 
-# Then use it in your pod spec or compose:
-# Mount the token file as a K8s Secret at /home/dev/.claude/
+# Use it:
+docker run -e CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-... cartridge
 ```
 
 ## Non-interactive (piped)
@@ -53,6 +65,34 @@ docker run --rm \
   cartridge \
   bash -c 'source /usr/local/nvm/nvm.sh && claude -p "Explain what this project does"'
 ```
+
+## Custom Claude Code config
+
+For teams that want to pre-seed specific settings (theme, feature flags, trusted workspaces), mount a `.claude.json` template:
+
+```yaml
+volumes:
+  - ./claude.json:/etc/cartridge/claude.json:ro
+```
+
+Or set the path via env var or TOML:
+
+```yaml
+environment:
+  - CLAUDE_CONFIG_TEMPLATE=/etc/cartridge/claude.json
+```
+
+```toml
+[claude]
+config_template = "/etc/cartridge/claude.json"
+```
+
+The template is copied to `~/.claude.json` on first boot only. If `.claude.json` already exists (from a volume mount at `~/.claude/`), it's left untouched.
+
+**Priority order:**
+1. Existing `~/.claude.json` (volume mount) - used as-is
+2. Template file (`CLAUDE_CONFIG_TEMPLATE` or `/etc/cartridge/claude.json`)
+3. Auto-onboarding when auth credentials are present
 
 ## With skills and plugins
 
@@ -70,6 +110,21 @@ services:
 ```
 
 Claude Code picks up skills from `~/.claude/skills/` (symlinked from `/skills` on boot).
+
+## Checking onboarding status
+
+The API's status endpoint shows whether Claude Code is ready:
+
+```bash
+curl -s http://localhost:4500/api/status | jq .providers.claude
+```
+
+```json
+{
+  "available": true,
+  "auth": "api_key"
+}
+```
 
 ## With HUSK telemetry
 
