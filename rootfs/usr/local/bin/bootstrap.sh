@@ -115,15 +115,27 @@ else
   [ -z "$TEMPLATE" ] && [ -f /etc/cartridge/claude.json ] && TEMPLATE="/etc/cartridge/claude.json"
 
   if [ -n "$TEMPLATE" ] && [ -f "$TEMPLATE" ]; then
-    cp "$TEMPLATE" "$CLAUDE_JSON"
-    chown dev:dev "$CLAUDE_JSON"
-    log "claude: applied config template from $TEMPLATE"
+    if python3 -c "import json, sys; json.load(open(sys.argv[1]))" "$TEMPLATE" 2>/dev/null; then
+      cp "$TEMPLATE" "$CLAUDE_JSON"
+      chown dev:dev "$CLAUDE_JSON"
+      log "claude: applied config template from $TEMPLATE"
+    else
+      log "claude: WARNING - template at $TEMPLATE is not valid JSON, skipping"
+    fi
   elif [ -n "${ANTHROPIC_API_KEY:-}${CLAUDE_CODE_OAUTH_TOKEN:-}${CLAUDE_CODE_USE_BEDROCK:-}${CLAUDE_CODE_USE_VERTEX:-}" ]; then
-    su -s /bin/bash dev -c "
+    # Ensure dev owns ~/.claude before running as dev user
+    chown -R dev:dev "$HOME_DIR/.claude"
+    # Send newlines through each onboarding prompt (theme, welcome, trust dialog)
+    if su -s /bin/bash dev -c "
       source $NVM_DIR/nvm.sh
       printf '\n\n\n\n\n\n\n\n\n\n' | claude -p 'echo ok' >/dev/null 2>&1
-    " || true
-    log "claude: onboarding completed"
+    "; then
+      log "claude: onboarding completed"
+    else
+      log "claude: onboarding failed (credentials present but setup did not complete)"
+    fi
+    # Verify state was actually written
+    [ ! -f "$CLAUDE_JSON" ] && log "claude: WARNING - .claude.json was not created"
   fi
 fi
 

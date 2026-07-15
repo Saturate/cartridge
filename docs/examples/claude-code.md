@@ -53,7 +53,7 @@ For subscription auth, generate a long-lived token once and pass it as an env va
 docker run --rm -it cartridge claude setup-token
 
 # Use it:
-docker run -e CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-... cartridge
+docker run -e CLAUDE_CODE_OAUTH_TOKEN=<your-token-here> cartridge
 ```
 
 ## Non-interactive (piped)
