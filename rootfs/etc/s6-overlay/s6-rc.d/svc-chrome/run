@@ -8,6 +8,7 @@ mkdir -p /home/dev/.cache/fontconfig /home/dev/.local/share/chromium/Crashpad
 chown -R dev:dev /home/dev/.cache /home/dev/.local/share/chromium
 
 export DBUS_SESSION_BUS_ADDRESS=/dev/null
+export CHROME_CRASHPAD_PIPE_NAME=
 
 # Prefer Playwright's container-friendly Chromium; fall back to system
 CHROME_BIN="${CHROME_PLAYWRIGHT_PATH:-/usr/local/bin/chrome-playwright}"
@@ -24,6 +25,8 @@ exec /command/s6-setuidgid dev \
     --disable-background-networking \
     --disable-crash-reporter \
     --disable-breakpad \
+    --disable-crashpad \
+    --crash-dumps-dir=/tmp \
     --no-first-run \
     --disable-default-apps \
     --disable-extensions \
