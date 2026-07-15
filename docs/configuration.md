@@ -99,6 +99,21 @@ Usage: `cartridge-notify "build complete"` or `cartridge-notify -t "Title" "mess
 | `SKILLS_INIT` | `integrations.skills_init` | `true` | Symlink `/skills` into Claude Code config |
 | `PK_MODE` | `integrations.pk_mode` | `true` | Enable PromptKiddie integration |
 
+### Claude Code
+
+| Env var | TOML key | Example | Description |
+|---------|----------|---------|-------------|
+| `CLAUDE_CONFIG_TEMPLATE` | `claude.config_template` | `/etc/cartridge/claude.json` | Path to a `.claude.json` template file. Copied to `~/.claude.json` on first boot if no existing config is found |
+
+**Onboarding behavior:**
+
+Bootstrap handles Claude Code's first-run onboarding automatically. Priority order:
+
+1. **Existing `~/.claude.json`** from a volume mount at `/home/dev/.claude` - used as-is, nothing is touched
+2. **Template file** at the path in `CLAUDE_CONFIG_TEMPLATE`, or at `/etc/cartridge/claude.json` if the env var is not set - copied in on first boot
+3. **Auto-onboarding** - when auth credentials are present (`ANTHROPIC_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`, `CLAUDE_CODE_USE_BEDROCK`, or `CLAUDE_CODE_USE_VERTEX`), bootstrap completes the onboarding non-interactively
+4. **No credentials** - onboarding is left for the user to complete interactively via the terminal
+
 ### Container
 
 | Env var | TOML key | Default | Description |
@@ -125,6 +140,7 @@ Usage: `cartridge-notify "build complete"` or `cartridge-notify -t "Title" "mess
 | `/workspace` | Project files |
 | `/skills` | Skills and plugins (read-only mount) |
 | `/etc/cartridge/config.toml` | TOML config file (read-only mount) |
+| `/etc/cartridge/claude.json` | Claude Code config template (read-only mount, optional) |
 
 ## TOML example
 
@@ -157,6 +173,9 @@ tailscale_hostname = "cartridge-dev"
 
 [notifications]
 shoutrrr_url = "slack://token-a/token-b/token-c"
+
+[claude]
+# config_template = "/etc/cartridge/claude.json"
 
 [integrations]
 husk_endpoint = "http://husk:3000"

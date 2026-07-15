@@ -34,6 +34,9 @@
 [notifications]
 # shoutrrr_url = "slack://token-a/token-b/token-c"
 
+[claude]
+# config_template = "/etc/cartridge/claude.json"  # pre-seed .claude.json
+
 [integrations]
 # husk_endpoint = "http://husk:3000"
 # husk_api_key = "..."
