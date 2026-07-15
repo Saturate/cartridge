@@ -12,12 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Check for changeset
         run: |
-          count=$(ls .changeset/*.md 2>/dev/null | grep -cv README || echo 0)
+          count=$(find .changeset -maxdepth 1 -name '*.md' ! -name 'README.md' | wc -l)
           if [ "$count" -eq 0 ]; then
             echo "::error::No changeset found. Run 'npx changeset' to add one."
             echo "For non-user-facing changes, create an empty changeset with 'npx changeset --empty'."
