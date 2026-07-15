@@ -1,5 +1,15 @@
 # cartridge
 
+## 0.2.0
+
+### Minor Changes
+
+- [#7](https://github.com/Saturate/cartridge/pull/7) [`201793b`](https://github.com/Saturate/cartridge/commit/201793b9d4cd2e2b2dab41751cdd9d39613a1888) Thanks [@Saturate](https://github.com/Saturate)! - Auto-complete Claude Code onboarding when auth credentials are present, with support for custom config templates via CLAUDE_CONFIG_TEMPLATE or /etc/cartridge/claude.json
+
+### Patch Changes
+
+- [#5](https://github.com/Saturate/cartridge/pull/5) [`a20c322`](https://github.com/Saturate/cartridge/commit/a20c3228887b85f40777206a47896269fe21f58f) Thanks [@Saturate](https://github.com/Saturate)! - Suppress Chromium crashpad handler errors in container by adding --disable-crashpad, --crash-dumps-dir, and clearing CHROME_CRASHPAD_PIPE_NAME
+
 ## 0.1.0
 
 ### Minor Changes
