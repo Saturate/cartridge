@@ -8,6 +8,24 @@ permissions:
   contents: read
 
 jobs:
+  changeset:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch base for comparison
+        run: git fetch --depth=1 origin main
+
+      - name: Check for changeset
+        run: |
+          count=$(git diff --name-only --diff-filter=A origin/main -- '.changeset/*.md' ':!.changeset/README.md' | wc -l)
+          if [ "$count" -eq 0 ]; then
+            echo "::error::No changeset found. Run 'npx changeset' to add one."
+            echo "For non-user-facing changes, create an empty changeset with 'npx changeset --empty'."
+            exit 1
+          fi
+          echo "$count changeset(s) found"
+
   build-api:
     runs-on: ubuntu-latest
     strategy:
