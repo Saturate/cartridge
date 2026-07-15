@@ -16,6 +16,7 @@ services:
       - ./data/config:/home/dev/.claude
       - ./workspace:/workspace
       # - ./skills:/skills:ro     # custom skills (optional)
+      # - ./claude.json:/etc/cartridge/claude.json:ro  # Claude Code config template (optional)
     environment:
       - TZ=Europe/Copenhagen
       - PUID=1000

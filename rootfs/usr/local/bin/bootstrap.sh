@@ -103,11 +103,31 @@ if [ -d "$WORKSPACE" ]; then
   su -s /bin/sh dev -c "git config --global --add safe.directory $WORKSPACE" 2>/dev/null || true
 fi
 
+# ── Claude Code onboarding ───────────────────────────────────────
+# Priority: 1) existing .claude.json (volume mount)
+#           2) template file (CLAUDE_CONFIG_TEMPLATE or /etc/cartridge/claude.json)
+#           3) auto-onboarding via claude -p when auth credentials exist
+CLAUDE_JSON="$HOME_DIR/.claude.json"
+if [ -f "$CLAUDE_JSON" ]; then
+  log "claude: using existing .claude.json"
+else
+  TEMPLATE="${CLAUDE_CONFIG_TEMPLATE:-}"
+  [ -z "$TEMPLATE" ] && [ -f /etc/cartridge/claude.json ] && TEMPLATE="/etc/cartridge/claude.json"
+
+  if [ -n "$TEMPLATE" ] && [ -f "$TEMPLATE" ]; then
+    cp "$TEMPLATE" "$CLAUDE_JSON"
+    chown dev:dev "$CLAUDE_JSON"
+    log "claude: applied config template from $TEMPLATE"
+  elif [ -n "${ANTHROPIC_API_KEY:-}${CLAUDE_CODE_OAUTH_TOKEN:-}${CLAUDE_CODE_USE_BEDROCK:-}${CLAUDE_CODE_USE_VERTEX:-}" ]; then
+    su -s /bin/bash dev -c "
+      source $NVM_DIR/nvm.sh
+      printf '\n\n\n\n\n\n\n\n\n\n' | claude -p 'echo ok' >/dev/null 2>&1
+    " || true
+    log "claude: onboarding completed"
+  fi
+fi
+
 # ── Provider auto-wiring ─────────────────────────────────────────
-# Claude Code: ANTHROPIC_API_KEY is picked up automatically.
-# For subscription auth, the user runs `claude auth login` or
-# `claude setup-token` interactively, or mounts credentials at
-# ~/.claude/ via a volume or K8s secret.
 
 # GitHub CLI
 if [ -n "${GH_TOKEN:-}${GITHUB_TOKEN:-}" ]; then

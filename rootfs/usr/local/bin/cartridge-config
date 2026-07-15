@@ -53,6 +53,8 @@ TOML_TO_ENV = {
     "integrations.husk_endpoint":   "HUSK_ENDPOINT",
     "integrations.husk_api_key":    "HUSK_API_KEY",
     "integrations.skills_init":     "SKILLS_INIT",
+    # [claude]
+    "claude.config_template":       "CLAUDE_CONFIG_TEMPLATE",
     # [container]
     "container.tz":                 "TZ",
     "container.novnc_enable":       "NOVNC_ENABLE",
