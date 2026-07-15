@@ -120,7 +120,7 @@ else
       chown dev:dev "$CLAUDE_JSON"
       log "claude: applied config template from $TEMPLATE"
     else
-      log "claude: WARNING - template at $TEMPLATE is not valid JSON, skipping"
+      log "claude: WARNING - template at $TEMPLATE is not valid JSON, skipping (fix or remove it to enable auto-onboarding)"
     fi
   elif [ -n "${ANTHROPIC_API_KEY:-}${CLAUDE_CODE_OAUTH_TOKEN:-}${CLAUDE_CODE_USE_BEDROCK:-}${CLAUDE_CODE_USE_VERTEX:-}" ]; then
     # Ensure dev owns ~/.claude before running as dev user
