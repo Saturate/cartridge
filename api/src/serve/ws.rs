@@ -8,9 +8,8 @@ use axum::{
 use axum::body::Bytes;
 use futures_util::{SinkExt, StreamExt};
 use serde::Deserialize;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, Mutex};
 use tokio::time::{Duration, Instant};
 
 use crate::agent::{AgentId, AgentRegistry, AgentStatus, BroadcastMessage, PtyCommand};
@@ -139,10 +138,37 @@ async fn handle_ws(
         return;
     }
 
-    let pong_received = Arc::new(AtomicBool::new(true));
+    // If the agent already exited, send a close frame and return immediately
+    // rather than entering the live loop where no further status broadcast
+    // will ever arrive.
+    {
+        let state = agent.read().await;
+        if matches!(
+            state.status,
+            AgentStatus::Completed | AgentStatus::Failed | AgentStatus::Stopped | AgentStatus::Timeout
+        ) {
+            let reason = match state.status {
+                AgentStatus::Completed => "agent completed",
+                AgentStatus::Failed => "agent failed",
+                AgentStatus::Stopped => "agent stopped",
+                AgentStatus::Timeout => "agent timed out",
+                _ => "agent exited",
+            };
+            ws_tx
+                .send(Message::Close(Some(CloseFrame {
+                    code: 1000,
+                    reason: reason.into(),
+                })))
+                .await
+                .ok();
+            return;
+        }
+    }
+
+    let last_pong = Arc::new(Mutex::new(Instant::now()));
 
     let agent_for_read = agent.clone();
-    let pong_for_read = pong_received.clone();
+    let pong_for_read = last_pong.clone();
     let mut read_task = tokio::spawn(async move {
         while let Some(Ok(msg)) = ws_rx.next().await {
             match msg {
@@ -177,7 +203,7 @@ async fn handle_ws(
                     }
                 }
                 Message::Pong(_) => {
-                    pong_for_read.store(true, Ordering::Release);
+                    *pong_for_read.lock().await = Instant::now();
                 }
                 Message::Close(_) => break,
                 _ => {}
@@ -185,11 +211,10 @@ async fn handle_ws(
         }
     });
 
-    let pong_for_write = pong_received;
+    let pong_for_write = last_pong;
     let mut write_task = tokio::spawn(async move {
         let mut ping_interval = tokio::time::interval(HEARTBEAT_INTERVAL);
-        ping_interval.tick().await; // consume immediate first tick
-        let mut last_pong = Instant::now();
+        ping_interval.tick().await;
 
         loop {
             tokio::select! {
@@ -277,10 +302,8 @@ async fn handle_ws(
                     }
                 }
                 _ = ping_interval.tick() => {
-                    if pong_for_write.swap(false, Ordering::Acquire) {
-                        last_pong = Instant::now();
-                    }
-                    if last_pong.elapsed() > HEARTBEAT_TIMEOUT {
+                    let elapsed = pong_for_write.lock().await.elapsed();
+                    if elapsed > HEARTBEAT_TIMEOUT {
                         tracing::warn!("WebSocket client missed heartbeat, closing");
                         ws_tx
                             .send(Message::Close(Some(CloseFrame {
