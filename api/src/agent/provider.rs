@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct ProviderOptions {
     pub model: Option<String>,
     pub max_turns: Option<u32>,
@@ -43,8 +44,40 @@ impl Provider {
         }
     }
 
-    /// Delay before sending the initial prompt (ms).
-    /// CLIs need time to initialize their TUI before accepting input.
+    pub fn build_headless_command(
+        &self,
+        prompt: &str,
+        options: &ProviderOptions,
+        safe_mode: bool,
+        custom_command: Option<&[String]>,
+    ) -> Option<Vec<String>> {
+        match self {
+            Provider::Claude => {
+                let mut cmd = build_claude(options, safe_mode);
+                cmd.extend(["-p".into(), prompt.into(), "--output-format".into(), "json".into()]);
+                Some(cmd)
+            }
+            Provider::Codex => {
+                let mut cmd = build_codex(options, safe_mode);
+                cmd.push(prompt.into());
+                Some(cmd)
+            }
+            Provider::Opencode => {
+                // `opencode run` is a distinct subcommand from the interactive TUI,
+                // so we build it from scratch rather than via build_opencode().
+                // Keep in sync with build_opencode() if new shared flags are added.
+                let mut cmd = vec!["opencode".into(), "run".into(), prompt.into()];
+                cmd.extend(["--format".into(), "json".into()]);
+                if let Some(model) = &options.model {
+                    cmd.extend(["--model".into(), model.clone()]);
+                }
+                Some(cmd)
+            }
+            Provider::Custom => Some(custom_command.unwrap_or(&[]).to_vec()),
+            Provider::Pi | Provider::Gemini => None,
+        }
+    }
+
     pub fn startup_delay_ms(&self) -> u64 {
         match self {
             Provider::Claude => 3000,
@@ -272,5 +305,90 @@ mod tests {
         let custom = vec!["node".into(), "my-agent.js".into(), "--flag".into()];
         let cmd = Provider::Custom.build_command(&ProviderOptions::default(), false, Some(&custom));
         assert_eq!(cmd, custom);
+    }
+
+    #[test]
+    fn claude_headless() {
+        let cmd = Provider::Claude
+            .build_headless_command("fix the bug", &ProviderOptions::default(), false, None)
+            .unwrap();
+        assert_eq!(cmd[0], "claude");
+        assert!(cmd.contains(&"-p".to_string()));
+        assert!(cmd.contains(&"fix the bug".to_string()));
+        assert!(cmd.contains(&"--output-format".to_string()));
+        assert!(cmd.contains(&"json".to_string()));
+    }
+
+    #[test]
+    fn claude_headless_with_options() {
+        let opts = ProviderOptions {
+            model: Some("opus".into()),
+            max_turns: Some(10),
+            ..Default::default()
+        };
+        let cmd = Provider::Claude
+            .build_headless_command("do stuff", &opts, false, None)
+            .unwrap();
+        assert!(cmd.contains(&"--model".to_string()));
+        assert!(cmd.contains(&"opus".to_string()));
+        assert!(cmd.contains(&"--max-turns".to_string()));
+        assert!(cmd.contains(&"-p".to_string()));
+    }
+
+    #[test]
+    fn codex_headless() {
+        let cmd = Provider::Codex
+            .build_headless_command("fix it", &ProviderOptions::default(), false, None)
+            .unwrap();
+        assert!(cmd.contains(&"exec".to_string()));
+        assert!(cmd.contains(&"fix it".to_string()));
+    }
+
+    #[test]
+    fn opencode_headless() {
+        let cmd = Provider::Opencode
+            .build_headless_command("analyze", &ProviderOptions::default(), false, None)
+            .unwrap();
+        assert_eq!(cmd[0], "opencode");
+        assert_eq!(cmd[1], "run");
+        assert!(cmd.contains(&"analyze".to_string()));
+        assert!(cmd.contains(&"--format".to_string()));
+        assert!(cmd.contains(&"json".to_string()));
+    }
+
+    #[test]
+    fn opencode_headless_with_model() {
+        let opts = ProviderOptions {
+            model: Some("provider/model".into()),
+            ..Default::default()
+        };
+        let cmd = Provider::Opencode
+            .build_headless_command("check", &opts, false, None)
+            .unwrap();
+        assert!(cmd.contains(&"--model".to_string()));
+        assert!(cmd.contains(&"provider/model".to_string()));
+    }
+
+    #[test]
+    fn custom_headless() {
+        let custom = vec!["my-tool".into(), "--run".into()];
+        let cmd = Provider::Custom
+            .build_headless_command("unused", &ProviderOptions::default(), false, Some(&custom))
+            .unwrap();
+        assert_eq!(cmd, custom);
+    }
+
+    #[test]
+    fn pi_headless_unsupported() {
+        assert!(Provider::Pi
+            .build_headless_command("test", &ProviderOptions::default(), false, None)
+            .is_none());
+    }
+
+    #[test]
+    fn gemini_headless_unsupported() {
+        assert!(Provider::Gemini
+            .build_headless_command("test", &ProviderOptions::default(), false, None)
+            .is_none());
     }
 }

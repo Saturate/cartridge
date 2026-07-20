@@ -51,12 +51,18 @@ pub struct SpawnRequest {
     pub timeout_secs: Option<u64>,
     pub idle_timeout_secs: Option<u64>,
     pub hooks: bool,
+    #[allow(dead_code)]
+    pub headless: bool,
 }
+
+pub type PtyChild = Arc<std::sync::Mutex<Box<dyn portable_pty::Child + Send + Sync>>>;
 
 pub fn spawn_agent(
     req: SpawnRequest,
     config: &Config,
-) -> Result<(AgentState, mpsc::Receiver<Vec<u8>>, Arc<std::sync::Mutex<Box<dyn portable_pty::Child + Send + Sync>>>), String> {
+) -> Result<(AgentState, mpsc::Receiver<Vec<u8>>, PtyChild), String> {
+    validate_env(&req.env)?;
+
     let id = AgentId::generate();
 
     let cmd_args = req.provider.build_command(
@@ -140,6 +146,7 @@ pub fn spawn_agent(
         last_activity: Instant::now(),
         cwd: req.cwd,
         env: req.env,
+        headless: false,
     };
 
     // PTY reader thread: reads bytes from the PTY master and sends to channel
@@ -197,7 +204,7 @@ pub fn spawn_agent(
 
 pub fn start_child_waiter(
     agent: Arc<RwLock<AgentState>>,
-    child: Arc<std::sync::Mutex<Box<dyn portable_pty::Child + Send + Sync>>>,
+    child: PtyChild,
 ) {
     tokio::spawn(async move {
         let child_clone = child.clone();
@@ -301,5 +308,204 @@ pub fn start_output_pump(
             state.touch_activity();
             let _ = state.broadcast_tx.send(BroadcastMessage::Terminal(data));
         }
+    });
+}
+
+/// Spawn a headless (non-PTY) agent with piped stdio.
+///
+/// The prompt is baked into CLI arguments rather than typed via PTY input.
+/// Only stdout feeds into the output channel; stderr is logged separately
+/// so structured JSON output is not corrupted.
+///
+/// **Custom provider note:** the prompt is *not* delivered to custom commands.
+/// Custom headless commands must embed their own prompt handling. The prompt
+/// is stored in `AgentState.prompt` for reference but not piped to stdin.
+pub async fn spawn_headless_agent(
+    req: SpawnRequest,
+    config: &Config,
+) -> Result<(AgentState, mpsc::Receiver<Vec<u8>>, tokio::process::Child), String> {
+    validate_env(&req.env)?;
+
+    let id = AgentId::generate();
+
+    let cmd_args = req
+        .provider
+        .build_headless_command(
+            &req.prompt,
+            &req.options,
+            config.safe_mode,
+            if req.provider == Provider::Custom {
+                Some(&req.command)
+            } else {
+                None
+            },
+        )
+        .ok_or_else(|| format!("provider {:?} does not support headless mode", req.provider))?;
+
+    if cmd_args.is_empty() {
+        return Err("empty command".into());
+    }
+
+    let mut cmd = tokio::process::Command::new(&cmd_args[0]);
+    if cmd_args.len() > 1 {
+        cmd.args(&cmd_args[1..]);
+    }
+    cmd.current_dir(&req.cwd);
+    cmd.stdout(std::process::Stdio::piped());
+    cmd.stderr(std::process::Stdio::piped());
+    cmd.stdin(std::process::Stdio::piped());
+    cmd.env("TERM", "dumb");
+    cmd.env("CARTRIDGE_AGENT_ID", &id.0);
+    cmd.env("CARTRIDGE_API_URL", format!("http://localhost:{}", config.port));
+
+    for (k, v) in &req.env {
+        cmd.env(k, v);
+    }
+
+    let mut child = cmd.spawn().map_err(|e| format!("spawn failed: {e}"))?;
+    let pid = child.id().unwrap_or(0);
+
+    let stdout = child.stdout.take().ok_or("failed to capture stdout")?;
+    let stderr = child.stderr.take().ok_or("failed to capture stderr")?;
+    let stdin = child.stdin.take().ok_or("failed to capture stdin")?;
+
+    let (broadcast_tx, _) = broadcast::channel(256);
+    let (pty_cmd_tx, pty_cmd_rx) = mpsc::channel(64);
+    let (output_tx, output_rx) = mpsc::channel::<Vec<u8>>(256);
+
+    // Only stdout goes into the output channel. Headless mode produces
+    // structured JSON on stdout, so mixing stderr in would corrupt it.
+    tokio::spawn(async move {
+        use tokio::io::AsyncReadExt;
+        let mut reader = stdout;
+        let mut buf = [0u8; 4096];
+        loop {
+            match reader.read(&mut buf).await {
+                Ok(0) => break,
+                Ok(n) => {
+                    if output_tx.send(buf[..n].to_vec()).await.is_err() {
+                        break;
+                    }
+                }
+                Err(_) => break,
+            }
+        }
+    });
+
+    // stderr is logged separately so it doesn't interleave with stdout.
+    let stderr_id = id.clone();
+    tokio::spawn(async move {
+        use tokio::io::AsyncReadExt;
+        let mut reader = stderr;
+        let mut buf = [0u8; 4096];
+        loop {
+            match reader.read(&mut buf).await {
+                Ok(0) => break,
+                Ok(n) => {
+                    let text = String::from_utf8_lossy(&buf[..n]);
+                    tracing::info!(agent_id = %stderr_id, stderr = %text, "headless agent stderr");
+                }
+                Err(_) => break,
+            }
+        }
+    });
+
+    tokio::spawn(handle_headless_commands(pty_cmd_rx, stdin, pid));
+
+    let state = AgentState {
+        id: id.clone(),
+        provider: req.provider,
+        prompt: req.prompt,
+        command: cmd_args,
+        pid,
+        status: AgentStatus::Running,
+        exit_code: None,
+        created_at: Instant::now(),
+        ring_buffer: RingBuffer::new(config.buffer_size),
+        events: EventBuffer::new(config.max_events),
+        messages: super::messages::MessageStore::new(),
+        broadcast_tx,
+        pty_cmd_tx: Some(pty_cmd_tx),
+        hooks_enabled: req.hooks,
+        timeout_secs: req.timeout_secs,
+        idle_timeout_secs: req.idle_timeout_secs,
+        last_activity: Instant::now(),
+        cwd: req.cwd,
+        env: req.env,
+        headless: true,
+    };
+
+    Ok((state, output_rx, child))
+}
+
+async fn handle_headless_commands(
+    mut rx: mpsc::Receiver<PtyCommand>,
+    mut stdin: tokio::process::ChildStdin,
+    pid: u32,
+) {
+    use tokio::io::AsyncWriteExt;
+
+    while let Some(cmd) = rx.recv().await {
+        match cmd {
+            PtyCommand::Input(data) => {
+                if stdin.write_all(&data).await.is_err() {
+                    break;
+                }
+                stdin.flush().await.ok();
+            }
+            // No-op: headless agents have no PTY to resize.
+            // The API layer rejects resize requests with 422 before this point.
+            PtyCommand::Resize { .. } => {}
+            PtyCommand::Kill => {
+                let raw_pid = nix::unistd::Pid::from_raw(pid as i32);
+                nix::sys::signal::kill(raw_pid, nix::sys::signal::Signal::SIGTERM).ok();
+                tokio::time::sleep(Duration::from_secs(5)).await;
+                nix::sys::signal::kill(raw_pid, nix::sys::signal::Signal::SIGKILL).ok();
+                break;
+            }
+        }
+    }
+}
+
+pub fn start_headless_child_waiter(
+    agent: Arc<RwLock<AgentState>>,
+    mut child: tokio::process::Child,
+) {
+    tokio::spawn(async move {
+        let exit = child.wait().await;
+
+        let (status, code) = match exit {
+            Ok(exit_status) => {
+                let code = exit_status.code().unwrap_or(-1);
+                if code == 0 {
+                    (AgentStatus::Completed, Some(code))
+                } else {
+                    (AgentStatus::Failed, Some(code))
+                }
+            }
+            Err(_) => (AgentStatus::Failed, None),
+        };
+
+        let mut state = agent.write().await;
+        let duration_ms = state.duration_ms();
+
+        if !matches!(state.status, AgentStatus::Stopped | AgentStatus::Timeout) {
+            state.status = status;
+        }
+        state.exit_code = code;
+
+        tracing::info!(
+            agent_id = %state.id,
+            exit_code = ?code,
+            ?status,
+            duration_ms,
+            "agent exited"
+        );
+
+        let _ = state.broadcast_tx.send(BroadcastMessage::Status {
+            status,
+            exit_code: code,
+            duration_ms,
+        });
     });
 }

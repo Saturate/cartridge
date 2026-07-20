@@ -33,6 +33,8 @@ pub struct CreateAgentRequest {
     pub hooks: bool,
     #[serde(default)]
     pub command: Vec<String>,
+    #[serde(default)]
+    pub headless: bool,
 }
 
 fn default_cwd() -> String { "/workspace".into() }
@@ -48,6 +50,7 @@ pub struct CreateAgentResponse {
     pub pid: u32,
     pub created_at: String,
     pub ws: String,
+    pub headless: bool,
 }
 
 #[derive(Serialize)]
@@ -59,6 +62,7 @@ pub struct AgentSummary {
     pub pid: u32,
     pub created_at: String,
     pub duration_ms: u64,
+    pub headless: bool,
 }
 
 #[derive(Serialize)]
@@ -77,6 +81,7 @@ pub struct AgentDetail {
     pub hooks_enabled: bool,
     pub buffer_size: u64,
     pub event_count: u64,
+    pub headless: bool,
 }
 
 #[derive(Serialize)]
@@ -215,6 +220,7 @@ pub async fn create_agent(
         Some(req.idle_timeout)
     };
 
+    let headless = req.headless;
     let spawn_req = SpawnRequest {
         provider,
         prompt: req.prompt,
@@ -225,22 +231,34 @@ pub async fn create_agent(
         timeout_secs,
         idle_timeout_secs,
         hooks: req.hooks && config.hooks_enabled,
+        headless,
     };
 
-    let (state, output_rx, child) = spawn_agent(spawn_req, config)
-        .map_err(|e| err(StatusCode::BAD_GATEWAY, "spawn_failed", &e))?;
+    let (id, pid, provider) = if headless {
+        let (state, output_rx, child) =
+            crate::agent::spawn::spawn_headless_agent(spawn_req, config)
+                .await
+                .map_err(|e| err(StatusCode::BAD_REQUEST, "headless_unsupported", &e))?;
 
-    let id = state.id.clone();
-    let pid = state.pid;
-    let provider = state.provider;
+        let id = state.id.clone();
+        let pid = state.pid;
+        let provider = state.provider;
+        let agent_arc = registry.insert(state).await;
+        crate::agent::spawn::start_output_pump(agent_arc.clone(), output_rx);
+        crate::agent::spawn::start_headless_child_waiter(agent_arc, child);
+        (id, pid, provider)
+    } else {
+        let (state, output_rx, child) = spawn_agent(spawn_req, config)
+            .map_err(|e| err(StatusCode::BAD_GATEWAY, "spawn_failed", &e))?;
 
-    let agent_arc = registry.insert(state).await;
-
-    // Start output pump: reads PTY bytes, appends to ring buffer, broadcasts to WS
-    crate::agent::spawn::start_output_pump(agent_arc.clone(), output_rx);
-
-    // Start child waiter: updates agent status when process exits
-    crate::agent::spawn::start_child_waiter(agent_arc, child);
+        let id = state.id.clone();
+        let pid = state.pid;
+        let provider = state.provider;
+        let agent_arc = registry.insert(state).await;
+        crate::agent::spawn::start_output_pump(agent_arc.clone(), output_rx);
+        crate::agent::spawn::start_child_waiter(agent_arc, child);
+        (id, pid, provider)
+    };
 
     // Schedule eviction check
     let reg = registry.clone();
@@ -258,6 +276,7 @@ pub async fn create_agent(
             status: AgentStatus::Running,
             pid,
             created_at: now_iso(),
+            headless,
         }),
     ))
 }
@@ -296,6 +315,7 @@ pub async fn list_agents(
             pid: a.pid,
             created_at: now_iso(),
             duration_ms: a.duration_ms(),
+            headless: a.headless,
         });
     }
 
@@ -328,6 +348,7 @@ pub async fn get_agent(
         hooks_enabled: a.hooks_enabled,
         buffer_size: a.ring_buffer.total_written(),
         event_count: a.events.total_count(),
+        headless: a.headless,
     }))
 }
 
@@ -412,6 +433,10 @@ pub async fn resize_agent(
         return Err(err(StatusCode::CONFLICT, "agent_not_running", "Agent has already exited"));
     }
 
+    if a.headless {
+        return Err(err(StatusCode::UNPROCESSABLE_ENTITY, "headless_no_resize", "Headless agents do not have a PTY to resize"));
+    }
+
     if let Some(tx) = &a.pty_cmd_tx {
         tx.send(PtyCommand::Resize {
             cols: req.cols,
@@ -450,7 +475,7 @@ pub async fn stop_agent(
     let _grace = body.map(|b| b.0.grace_period).unwrap_or(5);
     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
-    let mut a = agent_lock.write().await;
+    let a = agent_lock.read().await;
 
     Ok(Json(StopResponse {
         id: a.id.0.clone(),

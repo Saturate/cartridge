@@ -37,6 +37,7 @@ impl std::fmt::Display for AgentId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
+#[allow(dead_code)]
 pub enum AgentStatus {
     Starting,
     Running,
@@ -96,7 +97,9 @@ pub struct AgentState {
     pub idle_timeout_secs: Option<u64>,
     pub last_activity: Instant,
     pub cwd: PathBuf,
+    #[allow(dead_code)]
     pub env: HashMap<String, String>,
+    pub headless: bool,
 }
 
 impl AgentState {
@@ -173,6 +176,7 @@ impl AgentRegistry {
         count
     }
 
+    #[allow(dead_code)]
     pub async fn stop_all(&self) {
         let map = self.inner.read().await;
         for agent in map.values() {

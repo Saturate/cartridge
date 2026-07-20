@@ -59,6 +59,7 @@ impl MessageStore {
         self.messages.iter().collect()
     }
 
+    #[allow(dead_code)]
     pub fn count(&self) -> usize {
         self.messages.len()
     }

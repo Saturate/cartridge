@@ -224,7 +224,7 @@ fn openapi_spec() -> serde_json::Value {
                 },
                 "post": {
                     "summary": "Start an agent",
-                    "description": "Spawn a CLI agent in a real PTY. The agent runs with the full interactive TUI. Connect via WebSocket to stream output and events.",
+                    "description": "Spawn a CLI agent. By default runs in a PTY with full interactive TUI. Set headless=true to run with piped stdio for structured JSON output. Connect via WebSocket to stream output and events.",
                     "tags": ["Agents"],
                     "requestBody": { "required": true, "content": { "application/json": {
                         "schema": {
@@ -238,7 +238,8 @@ fn openapi_spec() -> serde_json::Value {
                                 "cwd": { "type": "string", "default": "/workspace", "description": "Working directory" },
                                 "timeout": { "type": "integer", "default": 3600, "description": "Max runtime in seconds. 0 = no timeout." },
                                 "hooks": { "type": "boolean", "default": true, "description": "Enable CLI hook plugins for this agent" },
-                                "command": { "type": "array", "items": { "type": "string" }, "description": "Raw command (custom provider only)" }
+                                "command": { "type": "array", "items": { "type": "string" }, "description": "Raw command (custom provider only)" },
+                                "headless": { "type": "boolean", "default": false, "description": "Run in headless mode with piped stdio instead of PTY. Supported by Claude, Codex, OpenCode, and custom commands." }
                             }
                         },
                         "examples": {
@@ -282,6 +283,15 @@ fn openapi_spec() -> serde_json::Value {
                                 "value": {
                                     "provider": "opencode",
                                     "prompt": "write unit tests for the utils module"
+                                }
+                            },
+                            "claude-headless": {
+                                "summary": "Claude headless (no PTY)",
+                                "value": {
+                                    "provider": "claude",
+                                    "prompt": "analyze the codebase and list all TODO comments",
+                                    "headless": true,
+                                    "options": { "model": "sonnet" }
                                 }
                             }
                         }

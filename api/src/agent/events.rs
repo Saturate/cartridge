@@ -37,10 +37,12 @@ impl EventBuffer {
         self.total_count
     }
 
+    #[allow(dead_code)]
     pub fn len(&self) -> usize {
         self.events.len()
     }
 
+    #[allow(dead_code)]
     pub fn iter(&self) -> impl Iterator<Item = &AgentEvent> {
         self.events.iter()
     }
