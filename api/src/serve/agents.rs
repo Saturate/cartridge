@@ -231,14 +231,19 @@ pub async fn create_agent(
         timeout_secs,
         idle_timeout_secs,
         hooks: req.hooks && config.hooks_enabled,
-        headless,
     };
 
     let (id, pid, provider) = if headless {
         let (state, output_rx, child) =
             crate::agent::spawn::spawn_headless_agent(spawn_req, config)
                 .await
-                .map_err(|e| err(StatusCode::BAD_REQUEST, "headless_unsupported", &e))?;
+                .map_err(|e| {
+                    if e.starts_with("unsupported:") {
+                        err(StatusCode::BAD_REQUEST, "headless_unsupported", &e)
+                    } else {
+                        err(StatusCode::BAD_GATEWAY, "spawn_failed", &e)
+                    }
+                })?;
 
         let id = state.id.clone();
         let pid = state.pid;

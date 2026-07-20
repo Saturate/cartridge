@@ -51,8 +51,6 @@ pub struct SpawnRequest {
     pub timeout_secs: Option<u64>,
     pub idle_timeout_secs: Option<u64>,
     pub hooks: bool,
-    #[allow(dead_code)]
-    pub headless: bool,
 }
 
 pub type PtyChild = Arc<std::sync::Mutex<Box<dyn portable_pty::Child + Send + Sync>>>;
@@ -340,7 +338,7 @@ pub async fn spawn_headless_agent(
                 None
             },
         )
-        .ok_or_else(|| format!("provider {:?} does not support headless mode", req.provider))?;
+        .ok_or_else(|| format!("unsupported: provider {:?} does not support headless mode", req.provider))?;
 
     if cmd_args.is_empty() {
         return Err("empty command".into());
@@ -363,7 +361,7 @@ pub async fn spawn_headless_agent(
     }
 
     let mut child = cmd.spawn().map_err(|e| format!("spawn failed: {e}"))?;
-    let pid = child.id().unwrap_or(0);
+    let pid = child.id().ok_or("failed to get child pid")?;
 
     let stdout = child.stdout.take().ok_or("failed to capture stdout")?;
     let stderr = child.stderr.take().ok_or("failed to capture stderr")?;
