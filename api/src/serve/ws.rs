@@ -1,3 +1,4 @@
+use axum::body::Bytes;
 use axum::{
     extract::{
         ws::{CloseFrame, Message, WebSocket},
@@ -5,7 +6,6 @@ use axum::{
     },
     response::Response,
 };
-use axum::body::Bytes;
 use futures_util::{SinkExt, StreamExt};
 use serde::Deserialize;
 use std::sync::Arc;
@@ -145,7 +145,10 @@ async fn handle_ws(
         let state = agent.read().await;
         if matches!(
             state.status,
-            AgentStatus::Completed | AgentStatus::Failed | AgentStatus::Stopped | AgentStatus::Timeout
+            AgentStatus::Completed
+                | AgentStatus::Failed
+                | AgentStatus::Stopped
+                | AgentStatus::Timeout
         ) {
             let reason = match state.status {
                 AgentStatus::Completed => "agent completed",
@@ -187,12 +190,10 @@ async fn handle_ws(
                                 }
                             }
                             Some("resize") => {
-                                let cols =
-                                    frame.get("cols").and_then(|c| c.as_u64()).unwrap_or(120)
-                                        as u16;
+                                let cols = frame.get("cols").and_then(|c| c.as_u64()).unwrap_or(120)
+                                    as u16;
                                 let rows =
-                                    frame.get("rows").and_then(|r| r.as_u64()).unwrap_or(40)
-                                        as u16;
+                                    frame.get("rows").and_then(|r| r.as_u64()).unwrap_or(40) as u16;
                                 let state = agent_for_read.read().await;
                                 if let Some(tx) = &state.pty_cmd_tx {
                                     tx.send(PtyCommand::Resize { cols, rows }).await.ok();

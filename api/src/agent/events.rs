@@ -42,6 +42,7 @@ impl EventBuffer {
         self.events.len()
     }
 
+    #[allow(dead_code)]
     pub fn iter(&self) -> impl Iterator<Item = &AgentEvent> {
         self.events.iter()
     }

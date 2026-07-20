@@ -99,6 +99,7 @@ pub struct AgentState {
     pub cwd: PathBuf,
     #[allow(dead_code)]
     pub env: HashMap<String, String>,
+    pub headless: bool,
 }
 
 impl AgentState {

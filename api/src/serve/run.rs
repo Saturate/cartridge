@@ -38,7 +38,11 @@ pub async fn handle_run(
     Json(req): Json<RunRequest>,
 ) -> Result<Json<RunResponse>, (StatusCode, Json<serde_json::Value>)> {
     if req.command.is_empty() {
-        return Err(error(StatusCode::BAD_REQUEST, "invalid_command", "Empty command array"));
+        return Err(error(
+            StatusCode::BAD_REQUEST,
+            "invalid_command",
+            "Empty command array",
+        ));
     }
 
     if let Err(msg) = validate_env(&req.env) {
@@ -65,7 +69,11 @@ pub async fn handle_run(
     }
 
     let child = cmd.spawn().map_err(|e| {
-        error(StatusCode::BAD_GATEWAY, "spawn_failed", &format!("Failed to spawn: {e}"))
+        error(
+            StatusCode::BAD_GATEWAY,
+            "spawn_failed",
+            &format!("Failed to spawn: {e}"),
+        )
     })?;
 
     let result = tokio::time::timeout(
@@ -99,11 +107,7 @@ pub async fn handle_run(
     }
 }
 
-fn error(
-    status: StatusCode,
-    code: &str,
-    message: &str,
-) -> (StatusCode, Json<serde_json::Value>) {
+fn error(status: StatusCode, code: &str, message: &str) -> (StatusCode, Json<serde_json::Value>) {
     (
         status,
         Json(serde_json::json!({

@@ -17,8 +17,12 @@ pub fn send(path: &str, data: &[u8]) -> Result<(), String> {
 
     let mut writer = std::io::BufWriter::new(stream);
     let len = (data.len() as u32).to_be_bytes();
-    writer.write_all(&len).map_err(|e| format!("write len: {e}"))?;
-    writer.write_all(data).map_err(|e| format!("write data: {e}"))?;
+    writer
+        .write_all(&len)
+        .map_err(|e| format!("write len: {e}"))?;
+    writer
+        .write_all(data)
+        .map_err(|e| format!("write data: {e}"))?;
     writer.flush().map_err(|e| format!("flush: {e}"))?;
 
     Ok(())

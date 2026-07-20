@@ -10,9 +10,9 @@ pub mod ws;
 use std::sync::Arc;
 
 use axum::{
-    Router,
     middleware,
     routing::{get, post},
+    Router,
 };
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::limit::RequestBodyLimitLayer;
@@ -51,7 +51,10 @@ pub async fn run(config: Config, log_buffer: logs::LogBuffer) {
     let config_arc = Arc::new(config);
 
     let app = Router::new()
-        .route("/api/agents", post(agents::create_agent).get(agents::list_agents))
+        .route(
+            "/api/agents",
+            post(agents::create_agent).get(agents::list_agents),
+        )
         .route("/api/agents/{id}", get(agents::get_agent))
         .route("/api/agents/{id}/output", get(agents::get_output))
         .route("/api/agents/{id}/input", post(agents::send_input))
@@ -59,7 +62,10 @@ pub async fn run(config: Config, log_buffer: logs::LogBuffer) {
         .route("/api/agents/{id}/stop", post(agents::stop_agent))
         .route("/api/agents/{id}/ws", get(ws::ws_upgrade))
         .route("/api/agents/{id}/terminal", get(terminal::terminal_page))
-        .route("/api/agents/{id}/messages", post(messages::send_message).get(messages::list_messages))
+        .route(
+            "/api/agents/{id}/messages",
+            post(messages::send_message).get(messages::list_messages),
+        )
         .with_state(registry.clone())
         .route("/api/run", post(run::handle_run))
         .with_state(config_arc)
@@ -76,11 +82,13 @@ pub async fn run(config: Config, log_buffer: logs::LogBuffer) {
     // Inject token for auth middleware
     let app = if let Some(ref t) = token {
         let t = t.clone();
-        app.layer(middleware::from_fn(move |mut req: axum::extract::Request, next: middleware::Next| {
-            let token = Some(t.clone());
-            req.extensions_mut().insert(token);
-            auth::auth_middleware(req, next)
-        }))
+        app.layer(middleware::from_fn(
+            move |mut req: axum::extract::Request, next: middleware::Next| {
+                let token = Some(t.clone());
+                req.extensions_mut().insert(token);
+                auth::auth_middleware(req, next)
+            },
+        ))
     } else {
         app
     };
@@ -224,7 +232,7 @@ fn openapi_spec() -> serde_json::Value {
                 },
                 "post": {
                     "summary": "Start an agent",
-                    "description": "Spawn a CLI agent in a real PTY. The agent runs with the full interactive TUI. Connect via WebSocket to stream output and events.",
+                    "description": "Spawn a CLI agent. By default runs in a PTY with full interactive TUI. Set headless=true to run with piped stdio for structured JSON output. Connect via WebSocket to stream output and events.",
                     "tags": ["Agents"],
                     "requestBody": { "required": true, "content": { "application/json": {
                         "schema": {
@@ -238,7 +246,8 @@ fn openapi_spec() -> serde_json::Value {
                                 "cwd": { "type": "string", "default": "/workspace", "description": "Working directory" },
                                 "timeout": { "type": "integer", "default": 3600, "description": "Max runtime in seconds. 0 = no timeout." },
                                 "hooks": { "type": "boolean", "default": true, "description": "Enable CLI hook plugins for this agent" },
-                                "command": { "type": "array", "items": { "type": "string" }, "description": "Raw command (custom provider only)" }
+                                "command": { "type": "array", "items": { "type": "string" }, "description": "Raw command (custom provider only)" },
+                                "headless": { "type": "boolean", "default": false, "description": "Run in headless mode with piped stdio instead of PTY. Supported by Claude, Codex, OpenCode, and custom commands." }
                             }
                         },
                         "examples": {
@@ -282,6 +291,15 @@ fn openapi_spec() -> serde_json::Value {
                                 "value": {
                                     "provider": "opencode",
                                     "prompt": "write unit tests for the utils module"
+                                }
+                            },
+                            "claude-headless": {
+                                "summary": "Claude headless (no PTY)",
+                                "value": {
+                                    "provider": "claude",
+                                    "prompt": "analyze the codebase and list all TODO comments",
+                                    "headless": true,
+                                    "options": { "model": "sonnet" }
                                 }
                             }
                         }
