@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct ProviderOptions {
     pub model: Option<String>,
     pub max_turns: Option<u32>,

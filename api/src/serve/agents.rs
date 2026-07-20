@@ -450,7 +450,7 @@ pub async fn stop_agent(
     let _grace = body.map(|b| b.0.grace_period).unwrap_or(5);
     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
-    let mut a = agent_lock.write().await;
+    let a = agent_lock.read().await;
 
     Ok(Json(StopResponse {
         id: a.id.0.clone(),

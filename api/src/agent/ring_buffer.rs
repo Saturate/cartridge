@@ -35,11 +35,7 @@ impl RingBuffer {
     }
 
     fn oldest_offset(&self) -> u64 {
-        if self.total_written <= self.capacity as u64 {
-            0
-        } else {
-            self.total_written - self.capacity as u64
-        }
+        self.total_written.saturating_sub(self.capacity as u64)
     }
 
     pub fn read_since(&self, since: u64) -> ReadResult {
