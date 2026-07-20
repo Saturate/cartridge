@@ -5,7 +5,10 @@ use crate::config::Config;
 
 pub fn print_status(config: &Config) {
     let status = collect_status_sync(config);
-    println!("{}", serde_json::to_string_pretty(&status).unwrap_or_else(|_| "{}".into()));
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&status).unwrap_or_else(|_| "{}".into())
+    );
 }
 
 fn collect_status_sync(config: &Config) -> serde_json::Value {
@@ -42,7 +45,9 @@ pub async fn handle_status(
     for agent_lock in &agents {
         let a = agent_lock.read().await;
         match a.status {
-            crate::agent::AgentStatus::Starting | crate::agent::AgentStatus::Running => running += 1,
+            crate::agent::AgentStatus::Starting | crate::agent::AgentStatus::Running => {
+                running += 1
+            }
             crate::agent::AgentStatus::Completed => completed += 1,
             _ => failed += 1,
         }
@@ -62,7 +67,15 @@ pub async fn handle_health() -> Json<serde_json::Value> {
 }
 
 fn probe_services() -> serde_json::Value {
-    let services = ["xvfb", "ttyd", "chrome", "state-sync", "novnc", "sshd", "api"];
+    let services = [
+        "xvfb",
+        "ttyd",
+        "chrome",
+        "state-sync",
+        "novnc",
+        "sshd",
+        "api",
+    ];
     let mut result = serde_json::Map::new();
 
     for svc in &services {
@@ -74,7 +87,11 @@ fn probe_services() -> serde_json::Value {
 
         result.insert(
             svc.to_string(),
-            serde_json::Value::String(if status { "running".into() } else { "stopped".into() }),
+            serde_json::Value::String(if status {
+                "running".into()
+            } else {
+                "stopped".into()
+            }),
         );
     }
 
@@ -88,8 +105,7 @@ fn probe_cdp() -> serde_json::Value {
 
     match output {
         Ok(o) if o.status.success() => {
-            let body: serde_json::Value =
-                serde_json::from_slice(&o.stdout).unwrap_or_default();
+            let body: serde_json::Value = serde_json::from_slice(&o.stdout).unwrap_or_default();
             serde_json::json!({
                 "available": true,
                 "browser": body.get("Browser").and_then(|b| b.as_str()).unwrap_or("unknown"),

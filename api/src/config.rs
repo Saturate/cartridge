@@ -26,7 +26,9 @@ impl Config {
     pub fn from_env() -> Self {
         Self {
             port: parse_env("CARTRIDGE_API_PORT", 4500),
-            token: env::var("CARTRIDGE_API_TOKEN").ok().filter(|s| !s.is_empty()),
+            token: env::var("CARTRIDGE_API_TOKEN")
+                .ok()
+                .filter(|s| !s.is_empty()),
             safe_mode: parse_env_bool("CARTRIDGE_API_SAFE_MODE", false),
             buffer_size: parse_env("CARTRIDGE_API_BUFFER_SIZE", 2_097_152),
             max_agents: parse_env("CARTRIDGE_API_MAX_AGENTS", 100),
@@ -37,7 +39,9 @@ impl Config {
             exec_max_timeout: parse_env("CARTRIDGE_API_EXEC_MAX_TIMEOUT", 300),
             idle_timeout: parse_env("CARTRIDGE_API_IDLE_TIMEOUT", 300),
             max_body_size: parse_env("CARTRIDGE_API_MAX_BODY_SIZE", 1_048_576),
-            cors_origin: env::var("CARTRIDGE_API_CORS_ORIGIN").ok().filter(|s| !s.is_empty()),
+            cors_origin: env::var("CARTRIDGE_API_CORS_ORIGIN")
+                .ok()
+                .filter(|s| !s.is_empty()),
             max_events: parse_env("CARTRIDGE_API_MAX_EVENTS", 10_000),
             log_level: env::var("CARTRIDGE_API_LOG_LEVEL").unwrap_or_else(|_| "info".into()),
             hooks_enabled: parse_env_bool("CARTRIDGE_HOOKS", true),

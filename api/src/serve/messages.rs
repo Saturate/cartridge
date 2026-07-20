@@ -6,8 +6,8 @@ use axum::{
 use serde::{Deserialize, Serialize};
 
 use crate::agent::{
+    messages::{format_for_pty, generate_message_id, AgentMessage, MessageType},
     AgentId, AgentRegistry, AgentStatus, PtyCommand,
-    messages::{AgentMessage, MessageType, format_for_pty, generate_message_id},
 };
 
 #[derive(Deserialize)]
@@ -35,7 +35,9 @@ type ApiError = (StatusCode, Json<serde_json::Value>);
 fn err(status: StatusCode, code: &str, msg: &str) -> ApiError {
     (
         status,
-        Json(serde_json::json!({ "error": { "code": code, "message": msg, "status": status.as_u16() } })),
+        Json(
+            serde_json::json!({ "error": { "code": code, "message": msg, "status": status.as_u16() } }),
+        ),
     )
 }
 
@@ -54,14 +56,21 @@ pub async fn send_message(
     Json(req): Json<SendMessageRequest>,
 ) -> Result<(StatusCode, Json<SendMessageResponse>), ApiError> {
     if req.content.is_empty() {
-        return Err(err(StatusCode::BAD_REQUEST, "invalid_request", "content is required"));
+        return Err(err(
+            StatusCode::BAD_REQUEST,
+            "invalid_request",
+            "content is required",
+        ));
     }
 
     let agent_id = AgentId(id.clone());
-    let agent_lock = registry
-        .get(&agent_id)
-        .await
-        .ok_or_else(|| err(StatusCode::NOT_FOUND, "agent_not_found", &format!("Agent {id} does not exist")))?;
+    let agent_lock = registry.get(&agent_id).await.ok_or_else(|| {
+        err(
+            StatusCode::NOT_FOUND,
+            "agent_not_found",
+            &format!("Agent {id} does not exist"),
+        )
+    })?;
 
     let msg_id = generate_message_id();
     let message = AgentMessage {
@@ -111,10 +120,13 @@ pub async fn list_messages(
     Path(id): Path<String>,
 ) -> Result<Json<MessageListResponse>, ApiError> {
     let agent_id = AgentId(id.clone());
-    let agent_lock = registry
-        .get(&agent_id)
-        .await
-        .ok_or_else(|| err(StatusCode::NOT_FOUND, "agent_not_found", &format!("Agent {id} does not exist")))?;
+    let agent_lock = registry.get(&agent_id).await.ok_or_else(|| {
+        err(
+            StatusCode::NOT_FOUND,
+            "agent_not_found",
+            &format!("Agent {id} does not exist"),
+        )
+    })?;
 
     let state = agent_lock.read().await;
     let messages: Vec<AgentMessage> = state.messages.list().into_iter().cloned().collect();

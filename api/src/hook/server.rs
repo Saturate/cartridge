@@ -1,8 +1,8 @@
 use tokio::io::AsyncReadExt;
 use tokio::net::UnixListener;
 
-use crate::agent::{AgentId, AgentRegistry, BroadcastMessage};
 use crate::agent::events::AgentEvent;
+use crate::agent::{AgentId, AgentRegistry, BroadcastMessage};
 
 const MAX_MESSAGE_SIZE: usize = 65_536;
 
@@ -10,8 +10,7 @@ pub async fn listen(path: &str, registry: AgentRegistry) -> Result<(), String> {
     // Remove stale socket
     let _ = std::fs::remove_file(path);
 
-    let listener = UnixListener::bind(path)
-        .map_err(|e| format!("bind {path}: {e}"))?;
+    let listener = UnixListener::bind(path).map_err(|e| format!("bind {path}: {e}"))?;
 
     tracing::info!(path, "hook socket listening");
 
@@ -28,10 +27,7 @@ pub async fn listen(path: &str, registry: AgentRegistry) -> Result<(), String> {
     }
 }
 
-async fn handle_connection(
-    mut stream: tokio::net::UnixStream,
-    registry: AgentRegistry,
-) {
+async fn handle_connection(mut stream: tokio::net::UnixStream, registry: AgentRegistry) {
     // Protocol: 4-byte big-endian length prefix, then JSON payload
     let mut len_buf = [0u8; 4];
     if stream.read_exact(&mut len_buf).await.is_err() {
@@ -99,13 +95,13 @@ async fn handle_connection(
     if let Some(agent_lock) = registry.get(&agent_id).await {
         let mut state = agent_lock.write().await;
         state.events.push(event);
-        let _ = state.broadcast_tx.send(BroadcastMessage::Event(
-            serde_json::json!({
+        let _ = state
+            .broadcast_tx
+            .send(BroadcastMessage::Event(serde_json::json!({
                 "event": event_type,
                 "agent_id": agent_id_str,
                 "payload": payload,
-            }),
-        ));
+            })));
     } else {
         tracing::warn!(agent_id = %agent_id, event = %event_type, "hook event for unknown agent");
     }

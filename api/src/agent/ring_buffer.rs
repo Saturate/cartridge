@@ -60,7 +60,8 @@ impl RingBuffer {
         let start_pos = if self.total_written <= self.capacity as u64 {
             effective_start as usize
         } else {
-            (self.write_pos + self.capacity - (self.total_written - effective_start) as usize) % self.capacity
+            (self.write_pos + self.capacity - (self.total_written - effective_start) as usize)
+                % self.capacity
         };
 
         let mut data = Vec::with_capacity(len);
@@ -121,7 +122,7 @@ mod tests {
     fn wrap_around() {
         let mut rb = RingBuffer::new(8);
         rb.append(b"12345678"); // fills exactly
-        rb.append(b"ab");       // wraps, overwrites "12"
+        rb.append(b"ab"); // wraps, overwrites "12"
 
         let result = rb.read_since(0);
         assert!(result.wrapped);

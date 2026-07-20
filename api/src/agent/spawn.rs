@@ -8,9 +8,8 @@ use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use tokio::sync::{broadcast, mpsc, RwLock};
 
 use super::{
-    AgentId, AgentState, AgentStatus, BroadcastMessage, Provider, PtyCommand,
-    events::EventBuffer,
-    ring_buffer::RingBuffer,
+    events::EventBuffer, ring_buffer::RingBuffer, AgentId, AgentState, AgentStatus,
+    BroadcastMessage, Provider, PtyCommand,
 };
 use crate::config::Config;
 
@@ -96,7 +95,10 @@ pub fn spawn_agent(
     cmd.cwd(&req.cwd);
     cmd.env("TERM", "xterm-256color");
     cmd.env("CARTRIDGE_AGENT_ID", &id.0);
-    cmd.env("CARTRIDGE_API_URL", format!("http://localhost:{}", config.port));
+    cmd.env(
+        "CARTRIDGE_API_URL",
+        format!("http://localhost:{}", config.port),
+    );
 
     for (k, v) in &req.env {
         cmd.env(k, v);
@@ -173,12 +175,7 @@ pub fn spawn_agent(
     let writer = Arc::new(std::sync::Mutex::new(writer));
     let cmd_pid = pid;
     let cmd_master = Arc::new(std::sync::Mutex::new(pair.master));
-    tokio::spawn(handle_pty_commands(
-        pty_cmd_rx,
-        writer,
-        cmd_master,
-        cmd_pid,
-    ));
+    tokio::spawn(handle_pty_commands(pty_cmd_rx, writer, cmd_master, cmd_pid));
 
     let child = Arc::new(std::sync::Mutex::new(child));
 
@@ -200,10 +197,7 @@ pub fn spawn_agent(
     Ok((state, output_rx, child))
 }
 
-pub fn start_child_waiter(
-    agent: Arc<RwLock<AgentState>>,
-    child: PtyChild,
-) {
+pub fn start_child_waiter(agent: Arc<RwLock<AgentState>>, child: PtyChild) {
     tokio::spawn(async move {
         let child_clone = child.clone();
         let exit = tokio::task::spawn_blocking(move || {
@@ -242,7 +236,7 @@ pub fn start_child_waiter(
         );
 
         let _ = state.broadcast_tx.send(BroadcastMessage::Status {
-            status,
+            status: state.status,
             exit_code: code,
             duration_ms,
         });
@@ -295,10 +289,7 @@ async fn handle_pty_commands(
     }
 }
 
-pub fn start_output_pump(
-    agent: Arc<RwLock<AgentState>>,
-    mut output_rx: mpsc::Receiver<Vec<u8>>,
-) {
+pub fn start_output_pump(agent: Arc<RwLock<AgentState>>, mut output_rx: mpsc::Receiver<Vec<u8>>) {
     tokio::spawn(async move {
         while let Some(data) = output_rx.recv().await {
             let mut state = agent.write().await;
@@ -338,7 +329,12 @@ pub async fn spawn_headless_agent(
                 None
             },
         )
-        .ok_or_else(|| format!("unsupported: provider {:?} does not support headless mode", req.provider))?;
+        .ok_or_else(|| {
+            format!(
+                "unsupported: provider {:?} does not support headless mode",
+                req.provider
+            )
+        })?;
 
     if cmd_args.is_empty() {
         return Err("empty command".into());
@@ -354,7 +350,10 @@ pub async fn spawn_headless_agent(
     cmd.stdin(std::process::Stdio::piped());
     cmd.env("TERM", "dumb");
     cmd.env("CARTRIDGE_AGENT_ID", &id.0);
-    cmd.env("CARTRIDGE_API_URL", format!("http://localhost:{}", config.port));
+    cmd.env(
+        "CARTRIDGE_API_URL",
+        format!("http://localhost:{}", config.port),
+    );
 
     for (k, v) in &req.env {
         cmd.env(k, v);

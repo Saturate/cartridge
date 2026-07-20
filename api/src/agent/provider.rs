@@ -54,7 +54,12 @@ impl Provider {
         match self {
             Provider::Claude => {
                 let mut cmd = build_claude(options, safe_mode);
-                cmd.extend(["-p".into(), prompt.into(), "--output-format".into(), "json".into()]);
+                cmd.extend([
+                    "-p".into(),
+                    prompt.into(),
+                    "--output-format".into(),
+                    "json".into(),
+                ]);
                 Some(cmd)
             }
             Provider::Codex => {
@@ -255,7 +260,15 @@ mod tests {
         let cmd = Provider::Claude.build_command(&opts, false, None);
         assert_eq!(
             cmd,
-            vec!["claude", "--model", "opus", "--max-turns", "50", "--allowedTools", "Read,Edit"]
+            vec![
+                "claude",
+                "--model",
+                "opus",
+                "--max-turns",
+                "50",
+                "--allowedTools",
+                "Read,Edit"
+            ]
         );
     }
 

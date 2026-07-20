@@ -23,7 +23,9 @@ pub struct LogBuffer {
 impl LogBuffer {
     pub fn new() -> Self {
         Self {
-            inner: Arc::new(Mutex::new(VecDeque::with_capacity(MAX_LOG_ENTRIES.min(1024)))),
+            inner: Arc::new(Mutex::new(VecDeque::with_capacity(
+                MAX_LOG_ENTRIES.min(1024),
+            ))),
         }
     }
 
@@ -125,8 +127,10 @@ impl tracing::field::Visit for JsonVisitor {
         if field.name() == "message" {
             self.message = Some(value.to_string());
         } else {
-            self.fields
-                .insert(field.name().to_string(), serde_json::Value::String(value.to_string()));
+            self.fields.insert(
+                field.name().to_string(),
+                serde_json::Value::String(value.to_string()),
+            );
         }
     }
 
@@ -166,8 +170,12 @@ pub struct LogsQuery {
     pub level: String,
 }
 
-fn default_limit() -> usize { 100 }
-fn default_level() -> String { "info".into() }
+fn default_limit() -> usize {
+    100
+}
+fn default_level() -> String {
+    "info".into()
+}
 
 #[derive(Serialize)]
 pub struct LogsResponse {

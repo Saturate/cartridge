@@ -6,10 +6,7 @@ use axum::{
     Json,
 };
 
-pub async fn auth_middleware(
-    request: Request,
-    next: Next,
-) -> Response {
+pub async fn auth_middleware(request: Request, next: Next) -> Response {
     let token = request
         .extensions()
         .get::<Option<String>>()
@@ -21,7 +18,11 @@ pub async fn auth_middleware(
     };
 
     let path = request.uri().path();
-    if path == "/api/health" || path == "/api/openapi.json" || path == "/api/docs" || path == "/api/logs" {
+    if path == "/api/health"
+        || path == "/api/openapi.json"
+        || path == "/api/docs"
+        || path == "/api/logs"
+    {
         return next.run(request).await;
     }
 
@@ -34,10 +35,7 @@ pub async fn auth_middleware(
     let query_token = request
         .uri()
         .query()
-        .and_then(|q| {
-            q.split('&')
-                .find_map(|pair| pair.strip_prefix("token="))
-        });
+        .and_then(|q| q.split('&').find_map(|pair| pair.strip_prefix("token=")));
 
     let provided = auth_header.or(query_token);
 

@@ -10,9 +10,9 @@ pub mod ws;
 use std::sync::Arc;
 
 use axum::{
-    Router,
     middleware,
     routing::{get, post},
+    Router,
 };
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::limit::RequestBodyLimitLayer;
@@ -51,7 +51,10 @@ pub async fn run(config: Config, log_buffer: logs::LogBuffer) {
     let config_arc = Arc::new(config);
 
     let app = Router::new()
-        .route("/api/agents", post(agents::create_agent).get(agents::list_agents))
+        .route(
+            "/api/agents",
+            post(agents::create_agent).get(agents::list_agents),
+        )
         .route("/api/agents/{id}", get(agents::get_agent))
         .route("/api/agents/{id}/output", get(agents::get_output))
         .route("/api/agents/{id}/input", post(agents::send_input))
@@ -59,7 +62,10 @@ pub async fn run(config: Config, log_buffer: logs::LogBuffer) {
         .route("/api/agents/{id}/stop", post(agents::stop_agent))
         .route("/api/agents/{id}/ws", get(ws::ws_upgrade))
         .route("/api/agents/{id}/terminal", get(terminal::terminal_page))
-        .route("/api/agents/{id}/messages", post(messages::send_message).get(messages::list_messages))
+        .route(
+            "/api/agents/{id}/messages",
+            post(messages::send_message).get(messages::list_messages),
+        )
         .with_state(registry.clone())
         .route("/api/run", post(run::handle_run))
         .with_state(config_arc)
@@ -76,11 +82,13 @@ pub async fn run(config: Config, log_buffer: logs::LogBuffer) {
     // Inject token for auth middleware
     let app = if let Some(ref t) = token {
         let t = t.clone();
-        app.layer(middleware::from_fn(move |mut req: axum::extract::Request, next: middleware::Next| {
-            let token = Some(t.clone());
-            req.extensions_mut().insert(token);
-            auth::auth_middleware(req, next)
-        }))
+        app.layer(middleware::from_fn(
+            move |mut req: axum::extract::Request, next: middleware::Next| {
+                let token = Some(t.clone());
+                req.extensions_mut().insert(token);
+                auth::auth_middleware(req, next)
+            },
+        ))
     } else {
         app
     };
@@ -483,7 +491,7 @@ fn openapi_spec() -> serde_json::Value {
             "/api/agents/{id}/ws": {
                 "get": {
                     "summary": "WebSocket stream",
-                    "description": "Multiplexed WebSocket connection for an agent. Streams three frame types from server: `terminal` (base64 PTY bytes), `event` (structured hook events), `status` (lifecycle changes). Accepts two frame types from client: `input` (keystrokes), `resize` (terminal dimensions). On connect, replays the current ring buffer contents.",
+                    "description": "Multiplexed WebSocket connection for an agent. Streams from server: `terminal` (base64 PTY bytes), `event` (structured hook events), `status` (lifecycle changes), `lag` (dropped frame count when client falls behind), `replay_done` (marks transition from buffered replay to live stream). Accepts from client: `input` (keystrokes), `resize` (terminal dimensions). On connect, replays the terminal ring buffer and all stored events (each with `replay: true`), followed by a `replay_done` frame. Server sends heartbeat pings every 30s; connections without a pong within 60s are closed. On agent exit, a WebSocket close frame is sent with the agent status as the reason.",
                     "tags": ["Agents"],
                     "parameters": [
                         { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "example": "ag_31595180e58c" },
