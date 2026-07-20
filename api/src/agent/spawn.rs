@@ -53,10 +53,12 @@ pub struct SpawnRequest {
     pub hooks: bool,
 }
 
+pub type PtyChild = Arc<std::sync::Mutex<Box<dyn portable_pty::Child + Send + Sync>>>;
+
 pub fn spawn_agent(
     req: SpawnRequest,
     config: &Config,
-) -> Result<(AgentState, mpsc::Receiver<Vec<u8>>, Arc<std::sync::Mutex<Box<dyn portable_pty::Child + Send + Sync>>>), String> {
+) -> Result<(AgentState, mpsc::Receiver<Vec<u8>>, PtyChild), String> {
     let id = AgentId::generate();
 
     let cmd_args = req.provider.build_command(
@@ -197,7 +199,7 @@ pub fn spawn_agent(
 
 pub fn start_child_waiter(
     agent: Arc<RwLock<AgentState>>,
-    child: Arc<std::sync::Mutex<Box<dyn portable_pty::Child + Send + Sync>>>,
+    child: PtyChild,
 ) {
     tokio::spawn(async move {
         let child_clone = child.clone();
@@ -237,7 +239,7 @@ pub fn start_child_waiter(
         );
 
         let _ = state.broadcast_tx.send(BroadcastMessage::Status {
-            status,
+            status: state.status,
             exit_code: code,
             duration_ms,
         });

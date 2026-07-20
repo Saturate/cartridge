@@ -37,6 +37,7 @@ impl EventBuffer {
         self.total_count
     }
 
+    #[allow(dead_code)]
     pub fn len(&self) -> usize {
         self.events.len()
     }

@@ -12,6 +12,7 @@ pub struct Config {
     pub retain_seconds: u64,
     pub exec_timeout: u64,
     pub exec_max_timeout: u64,
+    #[allow(dead_code)]
     pub idle_timeout: u64,
     pub max_body_size: usize,
     pub cors_origin: Option<String>,

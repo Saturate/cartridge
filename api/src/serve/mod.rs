@@ -473,7 +473,7 @@ fn openapi_spec() -> serde_json::Value {
             "/api/agents/{id}/ws": {
                 "get": {
                     "summary": "WebSocket stream",
-                    "description": "Multiplexed WebSocket connection for an agent. Streams three frame types from server: `terminal` (base64 PTY bytes), `event` (structured hook events), `status` (lifecycle changes). Accepts two frame types from client: `input` (keystrokes), `resize` (terminal dimensions). On connect, replays the current ring buffer contents.",
+                    "description": "Multiplexed WebSocket connection for an agent. Streams from server: `terminal` (base64 PTY bytes), `event` (structured hook events), `status` (lifecycle changes), `lag` (dropped frame count when client falls behind), `replay_done` (marks transition from buffered replay to live stream). Accepts from client: `input` (keystrokes), `resize` (terminal dimensions). On connect, replays the terminal ring buffer and all stored events (each with `replay: true`), followed by a `replay_done` frame. Server sends heartbeat pings every 30s; connections without a pong within 60s are closed. On agent exit, a WebSocket close frame is sent with the agent status as the reason.",
                     "tags": ["Agents"],
                     "parameters": [
                         { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "example": "ag_31595180e58c" },
