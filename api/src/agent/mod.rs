@@ -22,7 +22,7 @@ pub struct AgentId(pub String);
 
 impl AgentId {
     pub fn generate() -> Self {
-        use rand::Rng;
+        use rand::RngExt;
         let mut rng = rand::rng();
         let id: u64 = rng.random();
         Self(format!("ag_{:012x}", id & 0xFFFF_FFFF_FFFF))

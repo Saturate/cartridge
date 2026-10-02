@@ -34,7 +34,7 @@ FROM debian:bookworm-slim
 
 LABEL org.opencontainers.image.source=https://github.com/Saturate/cartridge
 
-ARG S6_OVERLAY_VERSION=3.2.3.0
+ARG S6_OVERLAY_VERSION=3.2.3.2
 ARG NODE_DEFAULT=24
 ARG TTYD_VERSION=1.7.7
 ARG TARGETARCH
@@ -81,7 +81,7 @@ RUN case "${TARGETARCH}" in \
 # ── nvm + Node.js ────────────────────────────────────────────────
 ENV NVM_DIR=/usr/local/nvm
 RUN mkdir -p "$NVM_DIR" \
-    && curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash \
+    && curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.8/install.sh | bash \
     && . "$NVM_DIR/nvm.sh" \
     && nvm install ${NODE_DEFAULT} \
     && nvm install 22 \
@@ -114,9 +114,9 @@ RUN case "${TARGETARCH}" in \
       amd64) DELTA_ARCH="x86_64-unknown-linux-musl"; SCC_ARCH="x86_64"; SHOUT_ARCH="amd64" ;; \
       arm64) DELTA_ARCH="aarch64-unknown-linux-gnu"; SCC_ARCH="arm64"; SHOUT_ARCH="arm64" ;; \
     esac \
-    && curl -fsSL "https://github.com/dandavison/delta/releases/download/0.18.2/delta-0.18.2-${DELTA_ARCH}.tar.gz" \
-      | tar -xz --strip-components=1 -C /usr/local/bin/ "delta-0.18.2-${DELTA_ARCH}/delta" \
-    && curl -fsSL "https://github.com/boyter/scc/releases/download/v3.7.0/scc_Linux_${SCC_ARCH}.tar.gz" \
+    && curl -fsSL "https://github.com/dandavison/delta/releases/download/0.19.2/delta-0.19.2-${DELTA_ARCH}.tar.gz" \
+      | tar -xz --strip-components=1 -C /usr/local/bin/ "delta-0.19.2-${DELTA_ARCH}/delta" \
+    && curl -fsSL "https://github.com/boyter/scc/releases/download/v4.1.0/scc_Linux_${SCC_ARCH}.tar.gz" \
       | tar -xz -C /usr/local/bin/ scc \
     && curl -fsSL "https://github.com/containrrr/shoutrrr/releases/download/v0.8.0/shoutrrr_linux_${SHOUT_ARCH}.tar.gz" \
       | tar -xz -C /usr/local/bin/ shoutrrr \
