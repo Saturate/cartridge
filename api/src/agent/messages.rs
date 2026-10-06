@@ -79,7 +79,7 @@ pub fn format_for_pty(msg: &AgentMessage) -> Vec<u8> {
 }
 
 pub fn generate_message_id() -> String {
-    use rand::Rng;
+    use rand::RngExt;
     let mut rng = rand::rng();
     let id: u64 = rng.random();
     format!("msg_{:012x}", id & 0xFFFF_FFFF_FFFF)
